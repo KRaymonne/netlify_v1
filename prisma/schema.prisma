@@ -1,0 +1,308 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init 
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  ACCOUNTANT
+  DIRECTOR
+  EMPLOYEE
+  HR
+  SECRETARY
+  TECHNICIAN
+  SENIOR_TECHNICIAN
+  ENGINEER
+  EXECUTIVE
+  INTERN
+}
+
+// Nouvelles Enums fusionnées
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+enum Workcountry {
+  IVORY_COAST
+  GHANA
+  BENIN
+  CAMEROON
+  TOGO
+  ROMANIE
+  ITALIE
+}
+
+enum IdentityType {
+  NATIONAL_ID_CARD
+  PASSPORT
+  DRIVER_LICENSE
+}
+
+enum UserStatus {
+  ON_HOLIDAY
+  SUSPENDED
+  FIRED
+  ACTIVE
+}
+
+enum ContractType {
+  PERMANENT_CONTRACT_CDI
+  FIXED_TERM_CONTRACT_CDD
+  INTERNSHIP
+  CONSULTANT
+}
+
+enum AbsenceType {
+  ILLNESS
+  ANNUAL_LEAVE
+  AUTHORIZED_LEAVE
+  HALF_DAY
+  UNJUSTIFIED_LEAVE
+  MATERNITY_LEAVE
+}
+
+enum BonusType {
+  PERFORMANCE
+  SENIORITY
+  SPECIAL
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+}
+
+enum BonusStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SanctionType {
+  WARNING
+  SUSPENSION
+  DEMOTION
+}
+
+// Modèle User 
+model User {
+  // Attributs existants (Identifiants et Rôle)
+  id     Int        @id @default(autoincrement()) // Sert également d'employeeId
+  role   UserRole
+  status UserStatus
+
+  // Attributs du Personel (Détails Personnels et Professionnels)
+  employeeNumber String @unique // Numéro d'employé
+  firstName      String
+  lastName       String
+  email          String @unique
+
+  // Détails Personnels étendus
+  dateOfBirth      DateTime
+  placeOfBirth     String
+  civilityDropdown Gender
+  maritalStatus    MaritalStatus
+  nationality      String
+  identityType     IdentityType
+  identity         String // Type String pour les documents d'identité (lettres, longs numéros)
+  workcountry      Workcountry // Pays de travail (utile pour les multinationales)
+
+  // Coordonnées
+  address String
+  phone   String // Téléphone fixe
+  mobile  String // Téléphone portable
+  tel     String // (Gardé de l'ancien User, si c'est différent de 'phone' ou 'mobile')
+  gender  String // (Gardé de l'ancien User)
+  country String // (Gardé de l'ancien User)
+
+  // Contact d'urgence
+  emergencyName    String
+  emergencyContact String
+  childrenCount    Int    @default(0) // Nombre d'enfants
+
+  // Détails de l'emploi
+  department String
+  salary     Float
+  hireDate   DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  contracts      Contract[]
+  absences       Absence[]
+  bonuses        Bonus[]
+  sanctions      Sanction[]
+  medicalRecords MedicalRecord[]
+
+  // Relations One-to-One existantes
+  accountant AccountantProfile?
+  director   DirectorProfile?
+  employee   EmployeeProfile?
+  secretary  SecretaryProfile?
+
+  @@map("users")
+}
+
+// Modèles de Profils liés au modèle User principal
+model AccountantProfile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  accountingDept String
+  additionalInfo String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model DirectorProfile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  departmentHead String
+  additionalInfo String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model EmployeeProfile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  position       String
+  additionalInfo String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model SecretaryProfile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  office         String
+  additionalInfo String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Contract {
+  contractId   Int          @id @default(autoincrement())
+  userId       Int // Clé étrangère vers User
+  contractType ContractType
+  startDate    DateTime
+  endDate      DateTime? // Optionnel (CDI)
+  post         String
+  department   String
+  unit         String? // Ajouté pour plus de précision
+  grossSalary  Float // Changé en Float pour la cohérence
+  netSalary    Float
+  currency     String
+  contractFile String? // URL ou chemin du fichier
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relation vers User
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("contracts")
+}
+
+model Absence {
+  absenceId          Int         @id @default(autoincrement())
+  userId             Int // Clé étrangère vers User
+  absenceType        AbsenceType
+  description        String?
+  startDate          DateTime
+  endDate            DateTime
+  daysCount          Int
+  returnDate         DateTime
+  supportingDocument String? // URL ou chemin du document
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  // Relation vers User
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("absences")
+}
+
+model Bonus {
+  bonusId            Int           @id @default(autoincrement())
+  userId             Int // Clé étrangère vers User
+  bonusType          BonusType
+  amount             Float // Changé en Float
+  currency           String
+  awardDate          DateTime
+  reason             String?
+  paymentMethod      PaymentMethod
+  status             BonusStatus
+  supportingDocument String? // URL ou chemin du document
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  // Relation vers User
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("bonuses")
+}
+
+model Sanction {
+  sanctionId         Int          @id @default(autoincrement())
+  userId             Int // Clé étrangère vers User
+  sanctionType       SanctionType
+  reason             String
+  sanctionDate       DateTime
+  durationDays       Int? // Optionnel (e.g., Avertissement n'a pas de durée)
+  decision           String? // Ajouté : plus de détails sur la décision finale
+  supportingDocument String? // URL ou chemin du document
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  // Relation vers User
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("sanctions")
+}
+
+model MedicalRecord {
+  medicalRecordsId Int       @id @default(autoincrement())
+  userId           Int // Clé étrangère vers User
+  visitDate        DateTime
+  description      String?
+  diagnosis        String?
+  testsPerformed   String?
+  testResults      String?
+  prescribedAction String?
+  notes            String?
+  nextVisitDate    DateTime?
+  medicalFile      String? // URL ou chemin du fichier
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relation vers User
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("medical_records")
+}
