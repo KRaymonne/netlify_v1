@@ -9,7 +9,11 @@ const MARITAL_OPTIONS = ['SINGLE','MARRIED','DIVORCED','WIDOWED'];
 const IDENTITY_TYPE_OPTIONS = ['NATIONAL_ID_CARD','PASSPORT','DRIVER_LICENSE'];
 const WORKCOUNTRY_OPTIONS = ['IVORY_COAST','GHANA','BENIN','CAMEROON','TOGO','ROMANIE','ITALIE'];
 
-export function UsersCreate() {
+interface UsersCreateProps {
+  onUserCreated?: () => void;
+}
+
+export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
   const [form, setForm] = useState<Record<string, any>>({
     // identifiers
     employeeNumber: '',
@@ -76,6 +80,10 @@ export function UsersCreate() {
         throw new Error(data.error || 'Échec de la création');
       }
       setSuccess('Utilisateur créé avec succès');
+      // Call the callback to refresh data if provided
+      if (onUserCreated) {
+        onUserCreated();
+      }
       // reset core fields, keep some defaults
       setForm(prev => ({ ...prev, employeeNumber: '', firstName: '', lastName: '', email: '', dateOfBirth: '', placeOfBirth: '', nationality: '', identity: '', address: '', phone: '', mobile: '', emergencyName: '', emergencyContact: '', childrenCount: 0, department: '', salary: '', hireDate: '' }));
     } catch (err: any) {

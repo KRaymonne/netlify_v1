@@ -1,43 +1,181 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  User, 
-  AlertCircle, 
-  FileText, 
-  Users, 
-  Car, 
-  Package, 
-  Briefcase, 
-  TrendingUp, 
-  CreditCard, 
-  Building, 
-  Shield,
-  Plus,
   Search,
   FileDown,
-  Calendar,
-  File,
   FilePlus
 } from 'lucide-react';
+
+// Import form components
+import { ContractForm } from '../Formscomponents/PersonnelForms/ContractForm';
+import { AbsenceForm } from '../Formscomponents/PersonnelForms/AbsenceForm';
+import { BonusForm } from '../Formscomponents/PersonnelForms/BonusForm';
+import { SanctionForm } from '../Formscomponents/PersonnelForms/SanctionForm';
+import { MedicalRecordForm } from '../Formscomponents/PersonnelForms/MedicalRecordForm';
+import { AffectationForm } from '../Formscomponents/PersonnelForms/AffectationForm';
+import { UsersCreate } from './UsersCreate';
+
+// Data types
+interface User {
+  id: number;
+  employeeNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: string;
+  department: string;
+  workcountry: string;
+  hireDate: string;
+  createdAt: string;
+}
+
+interface Contract {
+  contractId: number;
+  userId: number;
+  contractType: string;
+  startDate: string;
+  endDate: string | null;
+  post: string;
+  department: string;
+  unit: string | null;
+  grossSalary: number;
+  netSalary: number;
+  currency: string;
+  contractFile: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    employeeNumber: string;
+    email: string;
+  };
+}
+
+interface Absence {
+  absenceId: number;
+  userId: number;
+  absenceType: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
+  daysCount: number;
+  returnDate: string;
+  supportingDocument: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    employeeNumber: string;
+    email: string;
+  };
+}
+
+interface Bonus {
+  bonusId: number;
+  userId: number;
+  bonusType: string;
+  amount: number;
+  currency: string;
+  awardDate: string;
+  reason: string | null;
+  paymentMethod: string;
+  status: string;
+  supportingDocument: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    employeeNumber: string;
+    email: string;
+  };
+}
+
+interface Sanction {
+  sanctionId: number;
+  userId: number;
+  sanctionType: string;
+  reason: string;
+  sanctionDate: string;
+  durationDays: number | null;
+  decision: string | null;
+  supportingDocument: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    employeeNumber: string;
+    email: string;
+  };
+}
+
+interface MedicalRecord {
+  medicalRecordsId: number;
+  userId: number;
+  visitDate: string;
+  description: string | null;
+  diagnosis: string | null;
+  testsPerformed: string | null;
+  testResults: string | null;
+  prescribedAction: string | null;
+  notes: string | null;
+  nextVisitDate: string | null;
+  medicalFile: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    employeeNumber: string;
+    email: string;
+  };
+}
+
+interface Affectation {
+  affectationsId: number;
+  userId: number;
+  workLocation: string;
+  site: string;
+  affectationtype: string;
+  description: string | null;
+  startDate: string;
+  endDate: string | null;
+  attached_file: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    employeeNumber: string;
+    email: string;
+  };
+}
 
 export function Personnel() {
   const [activeMainTab, setActiveMainTab] = useState('Recherche');
   const [activeTab, setActiveTab] = useState('Absences');
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   
-  const menuItems = [
-    { icon: User, label: 'TABLEAU DE BORD', color: 'text-blue-600' },
-    { icon: AlertCircle, label: 'ALERTE ECHÉANCES', color: 'text-blue-600' },
-    { icon: FileText, label: 'GESTION DES CONTRATS', color: 'text-blue-600' },
-    { icon: Users, label: 'GESTION DU PERSONNEL', color: 'text-blue-600', active: true },
-    { icon: Car, label: 'GESTION DU PARC AUTO', color: 'text-blue-600' },
-    { icon: Package, label: 'GESTION DES ÉQUIPEMENTS', color: 'text-blue-600' },
-    { icon: Briefcase, label: 'GESTION DES OFFRES', color: 'text-blue-600' },
-    { icon: TrendingUp, label: 'GESTION DES AFFAIRES', color: 'text-blue-600' },
-    { icon: CreditCard, label: 'GESTION DES FACTURES', color: 'text-blue-600' },
-    { icon: Building, label: 'GESTION DES BANQUES', color: 'text-blue-600' },
-    { icon: Shield, label: 'GESTION DES CAISSES', color: 'text-blue-600' },
-    { icon: Shield, label: 'GESTION IMPÔTS ET TAXES', color: 'text-blue-600' }
-  ];
+  // Data states
+  const [users, setUsers] = useState<User[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [absences, setAbsences] = useState<Absence[]>([]);
+  const [bonuses, setBonuses] = useState<Bonus[]>([]);
+  const [sanctions, setSanctions] = useState<Sanction[]>([]);
+  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
+  const [affectations, setAffectations] = useState<Affectation[]>([]);
+  
+  // Loading and error states
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const tabs = [
     'Informations personnelles',
@@ -49,74 +187,221 @@ export function Personnel() {
     'Dossier Médical'
   ];
 
-  // Données d'exemple pour la recherche
-  const sampleData = {
-    'Informations personnelles': [
-      { id: 1, nom: 'Kouassi', prenom: 'Jean', dateEntree: '2023-01-15', categorie: 'Technicien', telephone: '0123456789', email: 'jean.kouassi@example.com' },
-      { id: 2, nom: 'Diabaté', prenom: 'Marie', dateEntree: '2022-09-10', categorie: 'Ingénieur', telephone: '0187654321', email: 'marie.diabate@example.com' },
-      { id: 3, nom: 'Traoré', prenom: 'Ahmed', dateEntree: '2023-03-20', categorie: 'Administration', telephone: '0165432198', email: 'ahmed.traore@example.com' }
-    ],
-    'Contrats': [
-      { id: 1, employe: 'Kouassi Jean', type: 'CDI', service: 'Informatique', poste: 'Développeur', salaireNet: 450000, dateDebut: '2023-01-15' },
-      { id: 2, employe: 'Diabaté Marie', type: 'CDI', service: 'Ingénierie', poste: 'Ingénieur Civil', salaireNet: 800000, dateDebut: '2022-09-10' },
-      { id: 3, employe: 'Traoré Ahmed', type: 'CDD', service: 'Administration', poste: 'Assistant RH', salaireNet: 300000, dateDebut: '2023-03-20' }
-    ],
-    'Affectations': [
-      { id: 1, employe: 'Kouassi Jean', lieu: 'SIÈGE ING', chantier: 'Chantier A', dateDebut: '2023-01-15', dateFin: '2023-12-31' },
-      { id: 2, employe: 'Diabaté Marie', lieu: 'CHANTIER', chantier: 'Chantier B', dateDebut: '2022-09-10', dateFin: '2024-03-15' },
-      { id: 3, employe: 'Traoré Ahmed', lieu: 'SIÈGE ADMINISTRATION', chantier: '-', dateDebut: '2023-03-20', dateFin: '2023-09-20' }
-    ],
-    'Absences': [
-      { id: 1, employe: 'Kouassi Jean', type: 'Congé annuel', dateDebut: '2023-07-15', jours: 5, dateFin: '2023-07-20' },
-      { id: 2, employe: 'Diabaté Marie', type: 'Maladie', dateDebut: '2023-06-10', jours: 2, dateFin: '2023-06-12' },
-      { id: 3, employe: 'Traoré Ahmed', type: 'Permission autorisée', dateDebut: '2023-08-05', jours: 1, dateFin: '2023-08-05' }
-    ],
-    'Primes': [
-      { id: 1, employe: 'Kouassi Jean', type: 'Performance', montant: 50000, dateAttribution: '2023-06-30', statut: 'Approuvé' },
-      { id: 2, employe: 'Diabaté Marie', type: 'Ancienneté', montant: 100000, dateAttribution: '2023-09-10', statut: 'Approuvé' },
-      { id: 3, employe: 'Traoré Ahmed', type: 'Spéciale', montant: 25000, dateAttribution: '2023-07-15', statut: 'En attente' }
-    ],
-    'Sanctions': [
-      { id: 1, employe: 'Kouassi Jean', type: 'Avertissement', motif: 'Retard répétitif', date: '2023-05-15', duree: 0, decision: 'Avertissement écrit' },
-      { id: 2, employe: 'Traoré Ahmed', type: 'Suspension', motif: 'Absence non justifiée', date: '2023-04-20', duree: 2, decision: 'Suspension de 2 jours' }
-    ],
-    'Dossier Médical': [
-      { id: 1, employe: 'Kouassi Jean', dateVisite: '2023-01-20', description: 'Visite médicale d\'embauche', diagnostic: 'Apte au travail' },
-      { id: 2, employe: 'Diabaté Marie', dateVisite: '2023-03-15', description: 'Contrôle annuel', diagnostic: 'Aucun problème détecté' }
-    ]
+  // Data fetching functions
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/users');
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+      setUsers(data);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError('Erreur lors du chargement des utilisateurs');
+    }
+  };
+
+  const fetchContracts = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/contracts');
+      if (!response.ok) throw new Error('Failed to fetch contracts');
+      const data = await response.json();
+      setContracts(data);
+    } catch (err) {
+      console.error('Error fetching contracts:', err);
+      setError('Erreur lors du chargement des contrats');
+    }
+  };
+
+  const fetchAbsences = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/absences');
+      if (!response.ok) throw new Error('Failed to fetch absences');
+      const data = await response.json();
+      setAbsences(data);
+    } catch (err) {
+      console.error('Error fetching absences:', err);
+      setError('Erreur lors du chargement des absences');
+    }
+  };
+
+  const fetchBonuses = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/bonuses');
+      if (!response.ok) throw new Error('Failed to fetch bonuses');
+      const data = await response.json();
+      setBonuses(data);
+    } catch (err) {
+      console.error('Error fetching bonuses:', err);
+      setError('Erreur lors du chargement des primes');
+    }
+  };
+
+  const fetchSanctions = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/sanctions');
+      if (!response.ok) throw new Error('Failed to fetch sanctions');
+      const data = await response.json();
+      setSanctions(data);
+    } catch (err) {
+      console.error('Error fetching sanctions:', err);
+      setError('Erreur lors du chargement des sanctions');
+    }
+  };
+
+  const fetchMedicalRecords = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/medical-records');
+      if (!response.ok) throw new Error('Failed to fetch medical records');
+      const data = await response.json();
+      setMedicalRecords(data);
+    } catch (err) {
+      console.error('Error fetching medical records:', err);
+      setError('Erreur lors du chargement des dossiers médicaux');
+    }
+  };
+
+  const fetchAffectations = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/affectations');
+      if (!response.ok) throw new Error('Failed to fetch affectations');
+      const data = await response.json();
+      setAffectations(data);
+    } catch (err) {
+      console.error('Error fetching affectations:', err);
+      setError('Erreur lors du chargement des affectations');
+    }
+  };
+
+  // Load data when component mounts
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await Promise.all([
+          fetchUsers(),
+          fetchContracts(),
+          fetchAbsences(),
+          fetchBonuses(),
+          fetchSanctions(),
+          fetchMedicalRecords(),
+          fetchAffectations()
+        ]);
+      } catch (err) {
+        console.error('Error loading data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Get current data based on active tab
+  const getCurrentData = () => {
+    switch (activeTab) {
+      case 'Informations personnelles':
+        return users;
+      case 'Contrats':
+        return contracts;
+      case 'Affectations':
+        return affectations;
+      case 'Absences':
+        return absences;
+      case 'Primes':
+        return bonuses;
+      case 'Sanctions':
+        return sanctions;
+      case 'Dossier Médical':
+        return medicalRecords;
+      default:
+        return [];
+    }
   };
 
   // Rendu des tableaux de recherche
   const renderSearchTable = () => {
-    const data = sampleData[activeTab] || [];
+    const data = getCurrentData();
+
+    // Show loading state
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center py-8">
+          <div className="text-gray-500">Chargement des données...</div>
+        </div>
+      );
+    }
+
+    // Show error state
+    if (error) {
+      return (
+        <div className="flex justify-center items-center py-8">
+          <div className="text-red-500">{error}</div>
+        </div>
+      );
+    }
+
+    // Show empty state
+    if (data.length === 0) {
+      return (
+        <div className="flex justify-center items-center py-8">
+          <div className="text-gray-500">Aucune donnée disponible</div>
+        </div>
+      );
+    }
 
     switch (activeTab) {
       case 'Informations personnelles':
         return (
           <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+            <table className="w-full min-w-[1200px]">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prénom</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Entrée</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matricule</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom complet</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Département</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pays de travail</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date d'embauche</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Créé le</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.nom}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.prenom}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateEntree}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.categorie}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.telephone}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.email}</td>
+                {(data as User[]).map((user: User) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm text-gray-900">{user.id}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 font-medium">{user.employeeNumber}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{user.firstName} {user.lastName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{user.email}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">
+                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-900">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        user.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                        user.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800' :
+                        user.status === 'FIRED' ? 'bg-red-100 text-red-800' :
+                        user.status === 'ON_HOLIDAY' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {user.status === 'ACTIVE' ? 'Actif' : 
+                         user.status === 'SUSPENDED' ? 'Suspendu' : 
+                         user.status === 'FIRED' ? 'Licencié' : 
+                         user.status === 'ON_HOLIDAY' ? 'En congé' : user.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{user.department}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{user.workcountry}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(user.hireDate).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(user.createdAt).toLocaleDateString('fr-FR')}</td>
                     <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
+                      <button className="text-blue-600 hover:text-blue-800 text-xs mr-2">Modifier</button>
+                      <button className="text-red-600 hover:text-red-800 text-xs">Supprimer</button>
                     </td>
                   </tr>
                 ))}
@@ -133,7 +418,7 @@ export function Personnel() {
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Département</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poste</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salaire Net</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Début</th>
@@ -141,14 +426,14 @@ export function Personnel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.employe}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.type}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.service}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.poste}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.salaireNet.toLocaleString()} FCFA</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateDebut}</td>
+                {(data as Contract[]).map((contract: Contract) => (
+                  <tr key={contract.contractId} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm text-gray-900">{contract.user.firstName} {contract.user.lastName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{contract.contractType}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{contract.department}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{contract.post}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{contract.netSalary.toLocaleString()} {contract.currency}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(contract.startDate).toLocaleDateString('fr-FR')}</td>
                     <td className="px-3 py-2 text-sm">
                       <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
                     </td>
@@ -167,20 +452,22 @@ export function Personnel() {
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lieu d'affectation</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chantier</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Début</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Fin</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.employe}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.lieu}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.chantier}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateDebut}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateFin}</td>
+                {(data as Affectation[]).map((affectation: Affectation) => (
+                  <tr key={affectation.affectationsId} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.user.firstName} {affectation.user.lastName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.workLocation}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.site}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.affectationtype}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(affectation.startDate).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.endDate ? new Date(affectation.endDate).toLocaleDateString('fr-FR') : '-'}</td>
                     <td className="px-3 py-2 text-sm">
                       <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
                     </td>
@@ -206,13 +493,13 @@ export function Personnel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.employe}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.type}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateDebut}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.jours}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateFin}</td>
+                {(data as Absence[]).map((absence: Absence) => (
+                  <tr key={absence.absenceId} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm text-gray-900">{absence.user.firstName} {absence.user.lastName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{absence.absenceType}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(absence.startDate).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{absence.daysCount}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(absence.endDate).toLocaleDateString('fr-FR')}</td>
                     <td className="px-3 py-2 text-sm">
                       <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
                     </td>
@@ -238,19 +525,21 @@ export function Personnel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.employe}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.type}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.montant.toLocaleString()} FCFA</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateAttribution}</td>
+                {(data as Bonus[]).map((bonus: Bonus) => (
+                  <tr key={bonus.bonusId} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm text-gray-900">{bonus.user.firstName} {bonus.user.lastName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{bonus.bonusType}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{bonus.amount.toLocaleString()} {bonus.currency}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(bonus.awardDate).toLocaleDateString('fr-FR')}</td>
                     <td className="px-3 py-2 text-sm">
                       <span className={`px-2 py-1 text-xs rounded-full ${
-                        row.statut === 'Approuvé' ? 'bg-green-100 text-green-800' :
-                        row.statut === 'En attente' ? 'bg-yellow-100 text-yellow-800' :
+                        bonus.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                        bonus.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                        {row.statut}
+                        {bonus.status === 'APPROVED' ? 'Approuvé' : 
+                         bonus.status === 'PENDING' ? 'En attente' : 
+                         bonus.status === 'REJECTED' ? 'Rejeté' : bonus.status}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-sm">
@@ -278,13 +567,13 @@ export function Personnel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.employe}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.type}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.motif}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.date}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.duree} jours</td>
+                {(data as Sanction[]).map((sanction: Sanction) => (
+                  <tr key={sanction.sanctionId} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.user.firstName} {sanction.user.lastName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.sanctionType}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.reason}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(sanction.sanctionDate).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.durationDays ? `${sanction.durationDays} jours` : '-'}</td>
                     <td className="px-3 py-2 text-sm">
                       <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
                     </td>
@@ -309,12 +598,12 @@ export function Personnel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.employe}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.dateVisite}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.description}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{row.diagnostic}</td>
+                {(data as MedicalRecord[]).map((record: MedicalRecord) => (
+                  <tr key={record.medicalRecordsId} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-sm text-gray-900">{record.user.firstName} {record.user.lastName}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(record.visitDate).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{record.description || '-'}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{record.diagnosis || '-'}</td>
                     <td className="px-3 py-2 text-sm">
                       <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
                     </td>
@@ -334,691 +623,19 @@ export function Personnel() {
   const renderCreationPageContent = () => {
     switch (activeTab) {
       case 'Sanctions':
-        return (
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-3 md:p-4 rounded-lg">
-              <div className="flex flex-wrap items-center gap-3">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs md:text-sm flex items-center space-x-2 transition-colors">
-                  <Plus size={16} />
-                  <span>Ajouter</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[1000px] md:min-w-0">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type Sanction
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Motif
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Durée
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Décision
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fichier Joint
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="bg-blue-50">
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <select className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="Avertissement">Avertissement</option>
-                        <option value="Suspension" selected>Suspension</option>
-                        <option value="Rétrogradation">Rétrogradation</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <textarea 
-                        className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[40px]"
-                        placeholder="Motif de la sanction..."
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="relative">
-                        <Calendar size={14} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input 
-                          type="date" 
-                          className="border border-gray-300 rounded pl-8 pr-2 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input 
-                        type="number" 
-                        className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        placeholder="Jours"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <textarea 
-                        className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[40px]"
-                        placeholder="Décision prise..."
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <div className="bg-blue-100 text-blue-600 p-1 md:p-2 rounded">
-                          <File size={14} />
-                        </div>
-                        <span className="text-xs md:text-sm text-gray-600">Choisir</span>
-                        <input type="file" className="hidden" />
-                      </label>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        return <SanctionForm />;
       case 'Primes':
-        return (
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-3 md:p-4 rounded-lg">
-              <div className="flex flex-wrap items-center gap-3">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs md:text-sm flex items-center space-x-2 transition-colors">
-                  <Plus size={16} />
-                  <span>Ajouter</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[1000px] md:min-w-0">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type Prime
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Montant
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date Attribution
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Motif
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mode de paiement 
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fichier
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="bg-blue-50">
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <select className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="Performance" selected>Performance</option>
-                        <option value="Ancienneté">Ancienneté</option>
-                        <option value="Spéciale">Spéciale</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input 
-                        type="number" 
-                        className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        placeholder="Montant"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="relative">
-                        <Calendar size={14} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input 
-                          type="date" 
-                          className="border border-gray-300 rounded pl-8 pr-2 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <textarea 
-                        className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[40px]"
-                        placeholder="Motif de la prime..."
-                      />
-                    </td>
-                     <td className="px-3 py-2 whitespace-nowrap">
-                      <select className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="Performance" selected>cash</option>
-                        <option value="Ancienneté">virement</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <select className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="En attente">En attente</option>
-                        <option value="Approuvé" selected>Approuvé</option>
-                        <option value="Rejeté">Rejeté</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <div className="bg-blue-100 text-blue-600 p-1 md:p-2 rounded">
-                          <File size={14} />
-                        </div>
-                        <span className="text-xs md:text-sm text-gray-600">Choisir</span>
-                        <input type="file" className="hidden" />
-                      </label>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        return <BonusForm />;
       case 'Absences':
-        return (
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-3 md:p-4 rounded-lg">
-              <div className="flex flex-wrap items-center gap-3">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs md:text-sm flex items-center space-x-2 transition-colors">
-                  <Plus size={16} />
-                  <span>Ajouter</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[1000px] md:min-w-0">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type Absence
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date début
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jours
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date Fin
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date retour
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fichier
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="bg-blue-50">
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <select className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="">Sélectionner...</option>
-                        <option>Maladie</option>
-                        <option>Congé annuel</option>
-                        <option>Permission autorisée</option>
-                        <option>Demi-journée</option>
-                        <option>Congé non-justifier</option>
-                        <option>Congé Materniter</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <textarea 
-                        className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[40px]"
-                        placeholder="Description..."
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="relative">
-                        <Calendar size={14} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input 
-                          type="date" 
-                          className="border border-gray-300 rounded pl-8 pr-2 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input 
-                        type="number" 
-                        className="border border-gray-300 rounded px-2 md:px-3 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="relative">
-                        <Calendar size={14} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input 
-                          type="date" 
-                          className="border border-gray-300 rounded pl-8 pr-2 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="relative">
-                        <Calendar size={14} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input 
-                          type="date" 
-                          className="border border-gray-300 rounded pl-8 pr-2 py-1.5 text-xs md:text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <div className="bg-blue-100 text-blue-600 p-1 md:p-2 rounded">
-                          <File size={14} />
-                        </div>
-                        <span className="text-xs md:text-sm text-gray-600">Choisir</span>
-                        <input type="file" className="hidden" />
-                      </label>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        return <AbsenceForm />;
       case 'Dossier Médical':  
-        return (
-          <div className="space-y-4">
-            <div className="bg-white border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[1200px] md:min-w-0">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date Visite</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Diagnostic</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tests effectués</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Résultat de test</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action prescrite</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date prescrite</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nom fichier</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fichier Joint</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="bg-blue-50">
-                    <td className="px-3 py-2 text-sm text-gray-600">1</td>
-                    <td className="px-3 py-2">
-                      <input type="date" className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="text" placeholder="Description..." className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="text" placeholder="Diagnostic..." className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="text" placeholder="Tests effectués..." className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="text" placeholder="Résultat..." className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="text" placeholder="Action prescrite..." className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <textarea placeholder="Notes..." className="border rounded px-2 py-1.5 text-xs md:text-sm w-full min-h-[40px] focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="date" className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="text" placeholder="Nom fichier..." className="border rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <div className="bg-blue-100 text-blue-600 p-2 rounded">+</div>
-                        <span className="text-xs text-gray-600">Ajouter</span>
-                        <input type="file" className="hidden" />
-                      </label>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        return <MedicalRecordForm />;
       case 'Contrats': 
-        return (
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-3 md:p-4 rounded-lg">
-              <div className="flex flex-wrap items-center gap-3">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs md:text-sm flex items-center space-x-2 transition-colors">
-                  <Plus size={16} />
-                  <span>Ajouter</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[1100px] md:min-w-0">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unité</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Poste</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Salaire net</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Salaire brut</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date début</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date fin</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nom fichier</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fichier joint</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="bg-blue-50">
-                    <td className="px-3 py-2">
-                      <select className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500">
-                        <option>CDI</option>
-                        <option>CDD</option>
-                        <option>Stage</option>
-                        <option>Consultant</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <select className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500">
-                        <option>Sélectionner...</option>
-                        <option>Ressources Humaines</option>
-                        <option>Comptabilité</option>
-                        <option>Informatique</option>
-                        <option>Logistique</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input 
-                        type="text"
-                        placeholder="Unité..."
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input 
-                        type="text"
-                        placeholder="Poste..."
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input 
-                        type="number"
-                        placeholder="0"
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input 
-                        type="number"
-                        placeholder="0"
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input type="date" className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"/>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input type="date" className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"/>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input 
-                        type="text"
-                        placeholder="Nom fichier..."
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <div className="bg-blue-100 text-blue-600 p-1 rounded">
-                          <File size={14} />
-                        </div>
-                        <span className="text-xs md:text-sm text-gray-600">Ajouter</span>
-                        <input type="file" className="hidden" />
-                      </label>
-                    </td>
-                  </tr>
-                </tbody>
-                </table>
-            </div>
-          </div>
-        );
+        return <ContractForm />;
       case 'Affectations': 
-        return (
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-3 md:p-4 rounded-lg">
-              <div className="flex flex-wrap items-center gap-3">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs md:text-sm flex items-center space-x-2 transition-colors">
-                  <Plus size={16} />
-                  <span>Ajouter</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[1000px] md:min-w-0">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lieu d'affectation</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Chantier</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date Début</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date Fin</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fichier</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fichier joint</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="bg-blue-50">
-                    <td className="px-3 py-2">
-                      <select className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500">
-                        <option>SIÈGE ADMINISTRATION</option>
-                        <option>SIÈGE ING-TOPO</option>
-                        <option>SIÈGE ING</option>
-                        <option>CHANTIER</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <select className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500">
-                        <option>Sélectionner...</option>
-                        <option>Chantier A</option>
-                        <option>Chantier B</option>
-                        <option>Chantier C</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input 
-                        type="text"
-                        placeholder="Description..."
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input type="date" className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"/>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input type="date" className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"/>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input 
-                        type="text"
-                        placeholder="Nom du fichier"
-                        className="border border-gray-300 rounded px-2 py-1.5 text-xs md:text-sm w-full focus:ring-1 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <div className="bg-blue-100 text-blue-600 p-1 rounded">
-                          <File size={14} />
-                        </div>
-                        <span className="text-xs md:text-sm text-gray-600">Ajouter</span>
-                        <input type="file" className="hidden" />
-                      </label>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        return <AffectationForm />;
       case 'Informations personnelles':
-        return (
-          <div className="space-y-4">
-            <div className="bg-white border rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-gray-700">Date d'Entrée:</label>
-                <input 
-                  type="date"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Catégorie:</label>
-                <select className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="">Choisir</option>
-                  <option value="administration">Administration</option>
-                  <option value="technicien">Technicien</option>
-                  <option value="technicien_superieur">Technicien Supérieur</option>
-                  <option value="ingenieur">Ingénieur</option>
-                  <option value="cadre">Cadre</option>
-                  <option value="stagiaire">Stagiaire</option>
-                  <option value="ouvrier">Ouvrier</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Nom:</label>
-                <input 
-                  type="text"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Nom"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Prénom:</label>
-                <input 
-                  type="text"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Prénom"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Date de naissance:</label>
-                <input 
-                  type="date"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Lieu de naissance:</label>
-                <input 
-                  type="text"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Lieu de naissance"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Situation matrimoniale:</label>
-                <select className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="">Choisir</option>
-                  <option value="celibataire">Célibataire</option>
-                  <option value="marie">Marié(e)</option>
-                  <option value="divorce">Divorcé(e)</option>
-                  <option value="veuf">Veuf(ve)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Civilité:</label>
-                <select className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="">Choisir</option>
-                  <option value="mr">Mr</option>
-                  <option value="mme">Mme</option>
-                  <option value="mlle">Mlle</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Nationalité:</label>
-                <select className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="">Choisir</option>
-                  <option value="civ">Côte d'Ivoire</option>
-                  <option value="ghana">Ghana</option>
-                  <option value="benin">Bénin</option>
-                  <option value="guinee">Guinée</option>
-                  <option value="bf">Burkina Faso</option>
-                  <option value="mali">Mali</option>
-                  <option value="cmr">Cameroun</option>
-                  <option value="togo">Togo</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Type Pièce:</label>
-                <select className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="">Choisir</option>
-                  <option value="cni">Carte Nationale</option>
-                  <option value="passport">Passeport</option>
-                  <option value="permis">Permis de conduire</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">N° Pièce:</label>
-                <input 
-                  type="text"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Numéro pièce"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Adresse domicile:</label>
-                <input 
-                  type="text"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Adresse domicile"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Cellulaire:</label>
-                <input 
-                  type="tel"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Téléphone"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">E-mail:</label>
-                <input 
-                  type="email"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="exemple@email.com"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Nombre d'enfants:</label>
-                <input 
-                  type="number"
-                  defaultValue={0}
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700">Contact en cas d'urgence:</label>
-                <input 
-                  type="tel"
-                  className="border border-gray-300 rounded w-full px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Contact urgence"
-                />
-              </div>
-            </div>
-          </div>
-        );
+        return <UsersCreate onUserCreated={fetchUsers} />;
       default:
         return <div>Contenu non disponible</div>;
     }
@@ -1085,19 +702,7 @@ export function Personnel() {
                 </nav>
               </div>
 
-              {/* Action Buttons */}
-              <div className="mb-4 md:mb-6 flex justify-end items-center gap-3">
-                {activeMainTab === 'Création' && (
-                  <>
-                    <button className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded text-sm flex items-center space-x-2 transition-colors">
-                      <span>Fermer</span>
-                    </button>
-                    <button className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-2 transition-colors">
-                      <span>Enregistrer</span>
-                    </button>
-                  </>
-                )}
-              </div>
+  
 
               {/* Content */}
               {activeMainTab === 'Recherche' ? (
