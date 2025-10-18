@@ -104,6 +104,17 @@ enum SanctionType {
   DEMOTION
 }
 
+enum AffectationType {
+  PERMANENT // Affectation à long terme ou par défaut
+  TEMPORARY // Affectation à court terme ou mission
+  TRANSFER
+  PROJECT_BASED
+  SPECIAL_ASSIGNMENT // Affectation spéciale ou mission
+  
+}
+
+
+
 // Modèle User 
 model User {
   // Attributs existants (Identifiants et Rôle)
@@ -152,6 +163,7 @@ model User {
   bonuses        Bonus[]
   sanctions      Sanction[]
   medicalRecords MedicalRecord[]
+  affectations   Affectation[]
 
   // Relations One-to-One existantes
   accountant AccountantProfile?
@@ -160,7 +172,7 @@ model User {
   secretary  SecretaryProfile?
 
   @@map("users")
-}
+} 
 
 // Modèles de Profils liés au modèle User principal
 model AccountantProfile {
@@ -288,7 +300,7 @@ model Sanction {
 
 model MedicalRecord {
   medicalRecordsId Int       @id @default(autoincrement())
-  userId           Int // Clé étrangère vers User
+  userId           Int       // Clé étrangère vers User
   visitDate        DateTime
   description      String?
   diagnosis        String?
@@ -306,3 +318,23 @@ model MedicalRecord {
 
   @@map("medical_records")
 }
+
+
+model Affectation { 
+  affectationsId Int             @id @default(autoincrement())
+  userId         Int             // Clé étrangère vers User
+  workLocation   String          // Lieu de travail (e.g., ville, adresse)
+  site           String          // Nom du site ou du bureau
+  affectationtype AffectationType
+  description    String?         // Description de la raison de l'affectation
+  startDate      DateTime
+  endDate        DateTime?       // Optionnel (s'il s'agit d'une affectation permanente)
+  attached_file  String?         // URL ou chemin du document d'affectation
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relation vers User
+  user           User            @relation(fields: [userId], references: [id])
+
+  @@map("affectations")
+} 
