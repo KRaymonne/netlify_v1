@@ -12,7 +12,7 @@ import { Offers } from './pages/Offers';
 import { BusinessPage } from './pages/Business';
 import { Invoices } from './pages/Invoices';
 import { Login } from './pages/login';
-import { UsersCreate } from './pages/UsersCreate';
+import { UsersCreate } from './Formscomponents/personnelforms/UsersCreate';
 import { UsersList } from './pages/UsersList';
 import { Banks } from './pages/Banks';
 import { CashRegisters } from './pages/CashRegisters';

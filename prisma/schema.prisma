@@ -12,7 +12,7 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
-} 
+}
 
 enum UserRole {
   SUPER_ADMIN
@@ -295,7 +295,7 @@ model Sanction {
   @@map("sanctions")
 }
 
-model MedicalRecord {  
+model MedicalRecord {
   medicalRecordsId Int       @id @default(autoincrement())
   userId           Int // Clé étrangère vers User
   visitDate        DateTime

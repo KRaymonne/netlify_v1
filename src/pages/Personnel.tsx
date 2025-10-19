@@ -12,7 +12,7 @@ import { BonusForm } from '../Formscomponents/PersonnelForms/BonusForm';
 import { SanctionForm } from '../Formscomponents/PersonnelForms/SanctionForm';
 import { MedicalRecordForm } from '../Formscomponents/PersonnelForms/MedicalRecordForm';
 import { AffectationForm } from '../Formscomponents/PersonnelForms/AffectationForm';
-import { UsersCreate } from './UsersCreate';
+import { UsersCreate } from '../Formscomponents/personnelforms/UsersCreate';
 
 // Data types
 interface User {
