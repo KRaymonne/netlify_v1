@@ -1,46 +1,48 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 
 const ROLE_OPTIONS = [
-  'SUPER_ADMIN','ADMIN','ACCOUNTANT','DIRECTOR','EMPLOYEE','HR','SECRETARY','TECHNICIAN','SENIOR_TECHNICIAN','ENGINEER','EXECUTIVE','INTERN'
+  'SUPER_ADMIN','ADMIN','ACCOUNTANT','DIRECTOR','EMPLOYEE','HR','SECRETARY','TECHNICIAN','SENIOR_TECHNICIAN','ENGINEER','EXECUTIVE','INTERN','DRIVER'
 ];
 const STATUS_OPTIONS = ['ON_HOLIDAY','SUSPENDED','FIRED','ACTIVE'];
 const GENDER_OPTIONS = ['MALE','FEMALE'];
 const MARITAL_OPTIONS = ['SINGLE','MARRIED','DIVORCED','WIDOWED'];
 const IDENTITY_TYPE_OPTIONS = ['NATIONAL_ID_CARD','PASSPORT','DRIVER_LICENSE'];
 const WORKCOUNTRY_OPTIONS = ['IVORY_COAST','GHANA','BENIN','CAMEROON','TOGO','ROMANIE','ITALIE'];
+const DEVISE_OPTIONS = ['XAF','XOF','EUR','GNF','GHS','RON','SLE','USD'];
 
 interface UsersCreateProps {
   onUserCreated?: () => void;
+  initialData?: any;
+  isEdit?: boolean;
+  onCancel?: () => void;
 }
 
-export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
+export function UsersCreate({ onUserCreated, initialData, isEdit = false, onCancel }: UsersCreateProps = {}) {
   const [form, setForm] = useState<Record<string, any>>({
-    // identifiers
     employeeNumber: '',
     role: 'EMPLOYEE',
     status: 'ACTIVE',
-    // personal
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     dateOfBirth: '',
     placeOfBirth: '',
+    devise: 'XAF',
     civilityDropdown: 'MALE',
     maritalStatus: 'SINGLE',
     nationality: '',
     identityType: 'NATIONAL_ID_CARD',
     identity: '',
     workcountry: 'IVORY_COAST',
-    // contact
     address: '',
     phone: '',
-    mobile: '',
-    // removed tel/gender/country to avoid duplicates with other fields
-    // emergency
+    phoneno: '',
+    gender: 'MALE',
+    country: '',
     emergencyName: '',
     emergencyContact: '',
     childrenCount: 0,
-    // job
     department: '',
     salary: '',
     hireDate: '',
@@ -50,8 +52,43 @@ export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Populate form with initial data when editing
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        employeeNumber: initialData.employeeNumber || '',
+        role: initialData.role || 'EMPLOYEE',
+        status: initialData.status || 'ACTIVE',
+        firstName: initialData.firstName || '',
+        lastName: initialData.lastName || '',
+        email: initialData.email || '',
+        password: '', // Don't prefill password for security
+        dateOfBirth: initialData.dateOfBirth ? (initialData.dateOfBirth.split('T')[0] || initialData.dateOfBirth) : '',
+        placeOfBirth: initialData.placeOfBirth || '',
+        devise: initialData.devise || 'XAF',
+        civilityDropdown: initialData.civilityDropdown || 'MALE',
+        maritalStatus: initialData.maritalStatus || 'SINGLE',
+        nationality: initialData.nationality || '',
+        identityType: initialData.identityType || 'NATIONAL_ID_CARD',
+        identity: initialData.identity || '',
+        workcountry: initialData.workcountry || 'IVORY_COAST',
+        address: initialData.address || '',
+        phone: initialData.phone || '',
+        phoneno: initialData.phoneno || '',
+        gender: initialData.gender || 'MALE',
+        country: initialData.country || '',
+        emergencyName: initialData.emergencyName || '',
+        emergencyContact: initialData.emergencyContact || '',
+        childrenCount: initialData.childrenCount || 0,
+        department: initialData.department || '',
+        salary: initialData.salary?.toString() || '',
+        hireDate: initialData.hireDate ? (initialData.hireDate.split('T')[0] || initialData.hireDate) : '',
+      });
+    }
+  }, [initialData]);
+
   const requiredKeys = useMemo(() => [
-    'employeeNumber','role','status','firstName','lastName','email','dateOfBirth','placeOfBirth','civilityDropdown','maritalStatus','nationality','identityType','identity','workcountry','address','phone','mobile','emergencyName','emergencyContact','department','salary'
+    'employeeNumber','role','status','firstName','lastName','email','dateOfBirth','placeOfBirth','devise','civilityDropdown','maritalStatus','nationality','identityType','identity','workcountry','address','phone','phoneno','gender','country','emergencyName','emergencyContact','department','salary'
   ], []);
 
   const onChange = (key: string, value: any) => {
@@ -64,28 +101,51 @@ export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
     setError(null);
     setSuccess(null);
     try {
-      // simple required check
-      const missing = requiredKeys.filter(k => form[k] === '' || form[k] === null || form[k] === undefined);
+      // simple required check - password not required in edit mode
+      const keysToCheck = isEdit ? requiredKeys.filter(k => k !== 'password') : requiredKeys;
+      const missing = keysToCheck.filter(k => form[k] === '' || form[k] === null || form[k] === undefined);
       if (missing.length) {
         throw new Error(`Champs manquants: ${missing.join(', ')}`);
       }
 
-      const res = await fetch('/.netlify/functions/users', {
-        method: 'POST',
+      const userId = initialData?.id;
+      const url = userId 
+        ? `/.netlify/functions/personnel-users?id=${userId}`
+        : '/.netlify/functions/personnel-users';
+      const method = userId ? 'PUT' : 'POST';
+      
+      // Prepare payload - exclude password if empty in edit mode
+      const payload = { ...form };
+      if (isEdit && !payload.password) {
+        delete payload.password;
+      }
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la création');
+        throw new Error(data.error || `Échec de la ${isEdit ? 'modification' : 'création'}`);
       }
-      setSuccess('Utilisateur créé avec succès');
-      // Call the callback to refresh data if provided
+      setSuccess(`Utilisateur ${isEdit ? 'modifié' : 'créé'} avec succès`);
+      // Call the callback to refresh data if provided 
       if (onUserCreated) {
-        onUserCreated();
+        await onUserCreated();
       }
-      // reset core fields, keep some defaults
-      setForm(prev => ({ ...prev, employeeNumber: '', firstName: '', lastName: '', email: '', dateOfBirth: '', placeOfBirth: '', nationality: '', identity: '', address: '', phone: '', mobile: '', emergencyName: '', emergencyContact: '', childrenCount: 0, department: '', salary: '', hireDate: '' }));
+
+      // Return to list after successful edit
+      if (isEdit && onCancel) {
+        setTimeout(() => {
+          onCancel();
+        }, 1000);
+      }
+
+      // reset core fields only when creating, keep values when editing
+      if (!isEdit) {
+        setForm(prev => ({ ...prev, employeeNumber: '', firstName: '', lastName: '', email: '', password: '', dateOfBirth: '', placeOfBirth: '', nationality: '', identity: '', address: '', phone: '', phoneno: '', country: '', emergencyName: '', emergencyContact: '', childrenCount: 0, department: '', salary: '', hireDate: '' }));
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue');
     } finally {
@@ -95,7 +155,7 @@ export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Créer un utilisateur</h1>
+      <h1 className="text-2xl font-semibold mb-4">{isEdit ? 'Modifier un utilisateur' : 'Créer un utilisateur'}</h1>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -105,6 +165,18 @@ export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
             <input type="email" value={form.email} onChange={(e) => onChange('email', e.target.value)} className="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Mot de passe {isEdit && <span className="text-gray-500 text-xs">(laisser vide pour ne pas modifier)</span>}
+            </label>
+            <input 
+              type="password" 
+              value={form.password} 
+              onChange={(e) => onChange('password', e.target.value)} 
+              className="w-full border rounded px-3 py-2"
+              required={!isEdit}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Prénom</label>
@@ -181,7 +253,23 @@ export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Mobile</label>
-            <input type="text" value={form.mobile} onChange={(e) => onChange('mobile', e.target.value)} className="w-full border rounded px-3 py-2" />
+            <input type="text" value={form.phoneno} onChange={(e) => onChange('phoneno', e.target.value)} className="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Devise</label>
+            <select value={form.devise} onChange={(e) => onChange('devise', e.target.value)} className="w-full border rounded px-3 py-2">
+              {DEVISE_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Genre</label>
+            <select value={form.gender} onChange={(e) => onChange('gender', e.target.value)} className="w-full border rounded px-3 py-2">
+              {GENDER_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Pays</label>
+            <input type="text" value={form.country} onChange={(e) => onChange('country', e.target.value)} className="w-full border rounded px-3 py-2" />
           </div>
           
 
@@ -216,10 +304,18 @@ export function UsersCreate({ onUserCreated }: UsersCreateProps = {}) {
         {success && <p className="text-green-600 text-sm">{success}</p>}
 
         <div className="flex gap-3">
+          {isEdit && onCancel && (
+            <button 
+              type="button" 
+              onClick={onCancel} 
+              className="px-4 py-2 bg-gray-100 border border-gray-300 rounded text-gray-700 hover:bg-gray-200"
+            >
+              Annuler
+            </button>
+          )}
           <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60">
-            {loading ? 'En cours...' : 'Créer'}
+            {loading ? 'En cours...' : (isEdit ? 'Modifier' : 'Créer')}
           </button>
-          <a href="/users" className="px-4 py-2 bg-gray-100 border rounded">Annuler</a>
         </div>
       </form>
     </div>

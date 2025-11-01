@@ -1,4 +1,4 @@
-export type TypeCurrency = 'XOF' | 'EUR' | 'USD' | 'CFA' | 'GNF' | 'MAD' | 'FCFA' | 'XAF' | 'XPF' | 'CAD' | 'GBP' | 'CHF' | 'JPY' | 'CNY';
+export type TypeCurrency = 'XAF' | 'XOF' | 'EUR' | 'GNF' | 'GHS' | 'RON' | 'SLE' | 'USD' | 'CAD' | 'GBP' | 'CHF' | 'JPY' | 'CNY';
 export interface Employee {
   id: string;
   firstName: string;
@@ -26,6 +26,7 @@ export interface Contact {
   cellPhone2?: string;
   landlinePhone?: string;
   registrationDate: string;
+  secondPhone?: string;
 }
 
 export interface Equipment {
@@ -155,7 +156,7 @@ export interface Offer {
 
 export interface Business {
   _id?: string; // MongoDB document ID
-  businessId?: string; // Optional business identifier
+  businessId?: number; // Changed from string to number to match the BusinessList interface
   id?: string; // For compatibility with frontend logic
   name: string;
   client: string;
@@ -170,6 +171,9 @@ export interface Business {
   comment?: string;
   createdAt?: string;
   updatedAt?: string;
+  endDate?: string;
+  salePrice?: number;
+  attachment?: string;
 }
 
 export interface Alert {

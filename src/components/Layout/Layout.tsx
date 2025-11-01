@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { useAuth } from '../../context/AuthContext';
 
 export function Layout() {
-  const [country, setCountry] = useState('cameroun');
+  const { effectiveCountryCode, setEffectiveCountryCode } = useAuth();
 
   const handleCountryChange = (newCountry: string) => {
-    console.log(`Changement de pays: ${newCountry}`);
-    setCountry(newCountry);
+    setEffectiveCountryCode(newCountry);
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar country={country} />
+      <Sidebar country={effectiveCountryCode} />
       <div className="flex-1 flex flex-col">
         <Header onCountryChange={handleCountryChange} />
         <main className="flex-1 overflow-auto">

@@ -4,9 +4,15 @@
   publish = "dist"          # Votre dossier de sortie (e.g. build, dist)
   functions = "netlify/functions" # Le dossier de vos fonctions
 
+
+
 # Configuration pour le déploiement de Prisma dans un environnement Serverless
-[functions]
-    # Important pour inclure le binaire du Query Engine de Prisma
+[functions] 
+    #Important pour inclure le binaire du Query Engine de Prisma
     node_bundler = "esbuild"
     external_node_modules = ["@prisma/client", "prisma"]
+
+
+
+
     

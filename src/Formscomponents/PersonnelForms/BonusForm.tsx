@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { FileUpload } from '../../components/Personnel/FileUpload';
 
 interface User {
   id: number;
@@ -19,7 +21,15 @@ interface BonusFormData {
   supportingDocument: string;
 }
 
-export function BonusForm() {
+interface BonusFormProps {
+  initialData?: any;
+  isEdit?: boolean;
+  onSubmit?: (data: any) => void;
+  onCancel?: () => void;
+}
+
+export function BonusForm({ initialData, isEdit = false, onSubmit, onCancel }: BonusFormProps = {}) {
+  const { userId: authUserId, effectiveCountryCode } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState<BonusFormData>({
     userId: 0,
@@ -36,11 +46,28 @@ export function BonusForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Populate form with initial data when editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        userId: initialData.userId || initialData.user?.id || 0,
+        bonusType: initialData.bonusType || '',
+        amount: initialData.amount || 0,
+        currency: initialData.currency || 'XOF',
+        awardDate: initialData.awardDate ? initialData.awardDate.split('T')[0] : '',
+        reason: initialData.reason || '',
+        paymentMethod: initialData.paymentMethod || '',
+        status: initialData.status || 'PENDING',
+        supportingDocument: initialData.supportingDocument || ''
+      });
+    }
+  }, [initialData]);
+
   // Load users on component mount
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const res = await fetch('/.netlify/functions/users');
+        const res = await fetch('/.netlify/functions/personnel-users');
         if (res.ok) {
           const data = await res.json();
           setUsers(data);
@@ -67,29 +94,69 @@ export function BonusForm() {
     setSuccess(null);
 
     try {
-      const res = await fetch('/.netlify/functions/bonuses', {
-        method: 'POST',
+      const url = isEdit 
+        ? `/.netlify/functions/personnel-bonuses?id=${initialData?.bonusId}` 
+        : '/.netlify/functions/personnel-bonuses';
+        
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const mapCodeToEnum = (code: string): string => {
+        switch (code) {
+          case 'cameroun': return 'CAMEROON';
+          case 'coteIvoire': return 'IVORY_COAST';
+          case 'italie': return 'ITALIE';
+          case 'ghana': return 'GHANA';
+          case 'benin': return 'BENIN';
+          case 'togo': return 'TOGO';
+          case 'romanie': return 'ROMANIE';
+          default: return 'CAMEROON';
+        }
+      };
+      const payload = {
+        ...formData,
+        Inserteridentity: authUserId,
+        InserterCountry: mapCodeToEnum(effectiveCountryCode)
+      };
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la création de la prime');
+        throw new Error(data.error || `Échec ${isEdit ? 'de la mise à jour' : 'de la création'} de la prime`);
       }
 
-      setSuccess('Prime créée avec succès');
-      setFormData({
-        userId: 0,
-        bonusType: '',
-        amount: 0,
-        currency: 'XOF',
-        awardDate: '',
-        reason: '',
-        paymentMethod: '',
-        status: 'PENDING',
-        supportingDocument: ''
-      });
+      setSuccess(`Prime ${isEdit ? 'mise à jour' : 'créée'} avec succès`);
+      
+      // Call onSubmit callback if provided
+      if (onSubmit) {
+        await onSubmit(formData);
+      }
+
+      // Return to list after successful edit
+      if (isEdit && onCancel) {
+        setTimeout(() => {
+          onCancel();
+        }, 1000);
+      }
+      
+      // Reset form only when creating new bonus
+      if (!isEdit) {
+        setFormData({
+          userId: 0,
+          bonusType: '',
+          amount: 0,
+          currency: 'XOF',
+          awardDate: '',
+          reason: '',
+          paymentMethod: '',
+          status: 'PENDING',
+          supportingDocument: ''
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue');
     } finally {
@@ -99,7 +166,7 @@ export function BonusForm() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Créer une Prime</h2>
+      <h2 className="text-xl font-semibold mb-4">{isEdit ? 'Modifier une Prime' : 'Créer une Prime'}</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -171,10 +238,14 @@ export function BonusForm() {
               required
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="XOF">XOF (Franc CFA)</option>
-              <option value="EUR">EUR (Euro)</option>
-              <option value="USD">USD (Dollar US)</option>
-              <option value="GHS">GHS (Cedi Ghanéen)</option>
+              <option value="XAF">Franc CFA BEAC (XAF)</option>
+              <option value="XOF">Franc CFA UEMOA (XOF)</option>
+              <option value="EUR">Euro (EUR)</option>
+              <option value="GNF">Franc Guinéen (GNF)</option>
+              <option value="GHS">Cedi Ghanéen (GHS)</option>
+              <option value="RON">Leu Roumain (RON)</option>
+              <option value="SLE">Leone (SLE)</option>
+              <option value="USD">Dollar Américain (USD)</option>
             </select>
           </div>
 
@@ -243,51 +314,49 @@ export function BonusForm() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Document justificatif
-          </label>
-          <input
-            type="file"
-            name="supportingDocument"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setFormData(prev => ({ ...prev, supportingDocument: file.name }));
-              }
-            }}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          />
-        </div>
+        <FileUpload
+          label="Document justificatif"
+          value={formData.supportingDocument}
+          onChange={(url) => setFormData(prev => ({ ...prev, supportingDocument: url || '' }))}
+        />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-600 text-sm">{success}</p>}
 
         <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={() => setFormData({
-              userId: 0,
-              bonusType: '',
-              amount: 0,
-              currency: 'XOF',
-              awardDate: '',
-              reason: '',
-              paymentMethod: '',
-              status: 'PENDING',
-              supportingDocument: ''
-            })}
-            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-          >
-            Réinitialiser
-          </button>
+          {isEdit && onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Annuler
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFormData({
+                userId: 0,
+                bonusType: '',
+                amount: 0,
+                currency: 'XOF',
+                awardDate: '',
+                reason: '',
+                paymentMethod: '',
+                status: 'PENDING',
+                supportingDocument: ''
+              })}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Réinitialiser
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60 hover:bg-blue-700"
           >
-            {loading ? 'Création...' : 'Créer la prime'}
+            {loading ? 'En cours...' : (isEdit ? 'Mettre à jour' : 'Créer la prime')}
           </button>
         </div>
       </form>

@@ -1,559 +1,397 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import { PageHeader } from '../components/Common/PageHeader';
+import { Button } from '../components/Common/Button';
 import { 
-  AlertTriangle, 
-  Calendar, 
-  CheckCircle, 
-  Bell, 
+  Bell,
+  AlertTriangle,
   Plus,
-  X,
-  Save,
-  ChevronLeft,
-  ChevronRight,
-  List
+  Eye,
+  X
 } from 'lucide-react';
 
-type Alert = {
-  id: number;
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="flex flex-col items-center justify-center p-8 bg-red-50 rounded-lg border border-red-200">
+          <div className="text-red-600 text-lg font-semibold mb-2">
+            Une erreur s'est produite
+          </div>
+          <div className="text-red-500 text-sm mb-4">
+            {this.state.error?.message || 'Erreur inconnue'}
+          </div>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Import alert forms
+import {
+  AlertForm,
+  AlertList
+} from '../Formscomponents/AlertForms';
+
+interface AlertModule {
+  id: string;
   title: string;
-  description?: string | null;
-  dueDate: string;
-  priority: 'high' | 'medium' | 'low';
-  status: 'pending' | 'completed';
-  type: string;
-  createdAt: string;
-  updatedAt: string;
-};
+  description?: string;
+  icon?: React.ReactNode;
+  color?: string;
+  apiEndpoint?: string;
+  formComponent: React.ComponentType<any>;
+  listComponent?: React.ComponentType<any>;
+}
 
-export function Alerts() {
-  const [currentMonth, setCurrentMonth] = useState('juin 2025');
-  const [selectedView, setSelectedView] = useState('Mois');
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [showModal, setShowModal] = useState(false);
-  const [showRecords, setShowRecords] = useState(false);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [newAlert, setNewAlert] = useState({
-    title: '',
-    description: '',
-    dueDate: '',
-    priority: 'medium',
-    type: 'Facture Client'
-  });
+const Alerts: React.FC = () => {
+  const [activeModule, setActiveModule] = useState<string | null>('alerts');
+  const [showForm, setShowForm] = useState(false);
+  const [showList, setShowList] = useState(true);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [moduleData, setModuleData] = useState<Record<string, any[]>>({});
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
-  // Charger les alertes
-  const loadAlerts = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const queryParams = activeFilter !== 'all' ? `?status=${activeFilter}` : '';
-      const res = await fetch(`/.netlify/functions/alerts${queryParams}`);
-      
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec du chargement');
-      }
-      
-      const data = await res.json();
-      setAlerts(data);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement');
-    } finally {
-      setLoading(false);
-    }
+  // API endpoints map for alert modules
+  const endpointMap: Record<string, string> = {
+    alerts: '/.netlify/functions/Alert-alerts',
   };
 
-  useEffect(() => {
-    loadAlerts();
-  }, [activeFilter]);
-
-  const alertTypes = [
-    "Facture Client",
-    "Facture Fournisseur", 
-    "Personnel",
-    "Parc auto",
-    "Équipement",
-    "Affaire/Chantier"
-  ];
-
-  const priorityLevels = [
-    { value: 'high', label: 'Élevée', color: 'red' },
-    { value: 'medium', label: 'Moyenne', color: 'yellow' },
-    { value: 'low', label: 'Faible', color: 'green' }
-  ];
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 border-red-500 text-red-800';
-      case 'medium': return 'bg-yellow-100 border-yellow-500 text-yellow-800';
-      case 'low': return 'bg-green-100 border-green-500 text-green-800';
-      default: return 'bg-gray-100 border-gray-500 text-gray-800';
-    }
+  // Primary key field names per module
+  const idKeyMap: Record<string, string> = {
+    alerts: 'alertId',
   };
 
-  const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      "Parc auto": "bg-blue-500",
-      "Personnel": "bg-red-500", 
-      "Affaire/Chantier": "bg-green-500",
-      "Facture Client": "bg-purple-500",
-      "Facture Fournisseur": "bg-pink-500",
-      "Équipement": "bg-orange-500"
+  const modules: AlertModule[] = [
+    {
+      id: 'alerts',
+      title: 'Alertes',
+      description: 'Gestion des alertes et échéances',
+      icon: <Bell className="w-6 h-6" />,
+      color: 'bg-red-500',
+      apiEndpoint: endpointMap.alerts,
+      formComponent: AlertForm,
+      listComponent: AlertList
+    }
+  ];
+
+  const getCurrentModule = () => {
+    return modules.find(m => m.id === activeModule) || null;
+  };
+
+  // Get the data key from API response
+  const getDataKey = (moduleId: string): string => {
+    const keyMap: Record<string, string> = {
+      'alerts': 'alerts',
     };
-    return colors[type] || "bg-gray-500";
+    return keyMap[moduleId] || moduleId;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR');
-  };
-
-  const filteredAlerts = alerts; // Déjà filtré par l'API
-
-  const markAsCompleted = async (alertId: number) => {
-    try {
-      const res = await fetch('/.netlify/functions/alerts', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: alertId, status: 'completed' })
-      });
-      
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la mise à jour');
-      }
-      
-      await loadAlerts(); // Recharger les données
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour');
+  // Fetch data for modules
+  const fetchModuleData = async (moduleId: string) => {
+    const endpoint = endpointMap[moduleId];
+    if (!endpoint) {
+      console.warn(`No endpoint found for module: ${moduleId}`);
+      return;
     }
-  };
 
-  const deleteAlert = async (alertId: number) => {
+    setLoadingStates(prev => ({ ...prev, [moduleId]: true }));
     try {
-      const res = await fetch(`/.netlify/functions/alerts/${alertId}`, {
-        method: 'DELETE'
-      });
-      
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la suppression');
+      const response = await fetch(endpoint);
+      if (response.ok) {
+        const responseData = await response.json();
+        
+        // Extract the data array from the response object
+        const dataKey = getDataKey(moduleId);
+        let dataArray: any[] = [];
+        
+        if (Array.isArray(responseData)) {
+          // Direct array response
+          dataArray = responseData;
+        } else if (responseData && typeof responseData === 'object') {
+          // Nested object response (most common case)
+          dataArray = responseData[dataKey] || [];
+        }
+        
+        console.log(`Fetched ${moduleId}:`, dataArray.length, 'items');
+        setModuleData(prev => ({ ...prev, [moduleId]: dataArray }));
+      } else {
+        console.error(`Failed to fetch ${moduleId}: ${response.status}`);
+        setModuleData(prev => ({ ...prev, [moduleId]: [] }));
       }
-      
-      await loadAlerts(); // Recharger les données
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la suppression');
-    }
-  };
-
-  const handleNewAlert = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/.netlify/functions/alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newAlert)
-      });
-      
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la création');
-      }
-      
-      await loadAlerts(); // Recharger les données
-      setShowModal(false);
-      setNewAlert({
-        title: '',
-        description: '',
-        dueDate: '',
-        priority: 'medium',
-        type: 'Facture Client'
-      });
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la création');
+    } catch (error) {
+      console.error(`Error fetching ${moduleId} data:`, error);
+      setModuleData(prev => ({ ...prev, [moduleId]: [] }));
     } finally {
-      setLoading(false);
+      setLoadingStates(prev => ({ ...prev, [moduleId]: false }));
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setNewAlert(prev => ({ ...prev, [field]: value }));
+  const handleModuleClick = (moduleId: string) => {
+    setActiveModule(moduleId);
+    setEditingItem(null);
+    const currentModule = modules.find(m => m.id === moduleId);
+    const hasList = currentModule?.listComponent !== undefined;
+    
+    // Initialize with empty array if data doesn't exist yet
+    if (hasList) {
+      if (!moduleData[moduleId]) {
+        setModuleData(prev => ({ ...prev, [moduleId]: [] }));
+      }
+      fetchModuleData(moduleId);
+    }
+    
+    setShowList(hasList);
+    setShowForm(!hasList);
   };
 
-  const navigateMonth = (direction: string) => {
-    const months = [
-      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
-    ];
-    
-    const [currentMonthName, year] = currentMonth.split(' ');
-    const currentMonthIndex = months.indexOf(currentMonthName);
-    let newMonthIndex = direction === 'next' 
-      ? (currentMonthIndex + 1) % 12 
-      : (currentMonthIndex - 1 + 12) % 12;
-    
-    let newYear = parseInt(year);
-    if (direction === 'next' && currentMonthIndex === 11) newYear++;
-    if (direction === 'prev' && currentMonthIndex === 0) newYear--;
-    
-    setCurrentMonth(`${months[newMonthIndex]} ${newYear}`);
+  const handleCreateNew = () => {
+    setShowForm(true);
+    setShowList(false);
+    setEditingItem(null);
   };
 
-  const calendarDays = Array.from({ length: 30 }, (_, i) => i + 1);
+  const handleEdit = (item: any) => {
+    setEditingItem(item);
+    setShowForm(true);
+    setShowList(false);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!activeModule) return;
+    try {
+      const endpoint = endpointMap[activeModule];
+      if (!endpoint) return;
+      const response = await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchModuleData(activeModule);
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };
+
+  const handleView = (item: any) => {
+    console.log('View item:', item);
+  };
+
+  const handleFormSubmit = async (data: any) => {
+    try {
+      if (!activeModule) return;
+      const endpoint = endpointMap[activeModule];
+      if (!endpoint) return;
+
+      const idKey = idKeyMap[activeModule];
+      const currentId = editingItem ? editingItem[idKey] : undefined;
+      const url = currentId ? `${endpoint}?id=${currentId}` : endpoint;
+      const method = currentId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        setShowForm(false);
+        const currentModule = modules.find(m => m.id === activeModule);
+        const hasList = currentModule?.listComponent !== undefined;
+        setShowList(hasList);
+        setEditingItem(null);
+
+        fetchModuleData(activeModule);
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    }
+  };
+
+  const getCurrentData = () => {
+    if (!activeModule) return [];
+    const data = moduleData[activeModule];
+    return Array.isArray(data) ? data : [];
+  };
+
+  const getCurrentLoading = () => {
+    return loadingStates[activeModule || ''] || false;
+  };
+
+  // Load alerts data on component mount
+  useEffect(() => {
+    if (activeModule === 'alerts') {
+      fetchModuleData('alerts');
+    }
+  }, [activeModule]);
+
+  // Get the prop name for the list component
+  const getListPropName = () => {
+    switch (activeModule) {
+      case 'alerts': return 'alerts';
+      default: return 'data';
+    }
+  };
+
+  const currentModule = getCurrentModule() as AlertModule | null;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Bell className="w-6 h-6 mr-3 text-red-500" />
-              Alertes des Échéances
-            </h1>
-            <div className="flex space-x-2">
-              <button 
-                onClick={() => setShowRecords(!showRecords)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+    <div className="space-y-6">
+      <PageHeader
+        title="Gestion des Alertes" 
+        subtitle="Gérez toutes les alertes et échéances de l'entreprise"
+      />
+
+      {/* Top module tabs */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="border-b border-gray-200 px-4">
+          <nav className="flex -mb-px overflow-x-auto">
+            {modules.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleModuleClick(tab.id)}
+                className={`px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeModule === tab.id
+                    ? 'border-red-500 text-red-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
-                <List className="w-4 h-4" />
-                <span>{showRecords ? 'Calendrier' : 'Enregistrements'}</span>
+                {tab.title}
               </button>
-              <button 
-                onClick={() => setShowModal(true)}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Nouvelle alerte</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 flex">
-          {/* Calendar section */}
-          <div className="flex-1 p-6">
-            <div className="bg-white rounded-lg shadow-lg">
-              {/* Calendar header */}
-              <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <button 
-                      onClick={() => navigateMonth('prev')}
-                      className="p-2 hover:bg-white hover:shadow rounded-lg transition-all"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button 
-                      onClick={() => navigateMonth('next')}
-                      className="p-2 hover:bg-white hover:shadow rounded-lg transition-all"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                    <span className="text-xl font-bold text-gray-800 capitalize">{currentMonth}</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    {['Mois', 'Semaine', 'Jour'].map(view => (
-                      <button 
-                        key={view}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                          selectedView === view 
-                            ? 'bg-blue-600 text-white shadow-lg' 
-                            : 'bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                        onClick={() => setSelectedView(view)}
-                      >
-                        {view}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Legend */}
-              <div className="p-6 border-b bg-gray-50">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Légende des types d'alertes</h3>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  {[
-                    { color: "bg-blue-500", label: "Parc auto" },
-                    { color: "bg-red-500", label: "Personnel" },
-                    { color: "bg-green-500", label: "Affaire/Chantier" },
-                    { color: "bg-purple-500", label: "Facture Client" },
-                    { color: "bg-pink-500", label: "Facture Fournisseur" },
-                    { color: "bg-orange-500", label: "Équipement" }
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
-                      <span className="text-gray-700">{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Calendar grid */}
-              <div className="p-6">
-                <div className="grid grid-cols-7 gap-2 mb-4">
-                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
-                    <div key={day} className="p-3 text-center text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {calendarDays.map(day => {
-                    const dayAlerts = alerts.filter(alert => {
-                      const alertDate = new Date(alert.dueDate);
-                      return alertDate.getDate() === day && alertDate.getMonth() === 5; // Juin
-                    });
-                    
-                    return (
-                      <div key={day} className="h-24 border border-gray-200 p-2 bg-white rounded-lg hover:shadow-md transition-shadow">
-                        <div className="text-sm font-medium text-gray-700 mb-1">{day}</div>
-                        {dayAlerts.map(alert => (
-                          <div 
-                            key={alert.id} 
-                            className={`w-2 h-2 rounded-full mb-1 ${getTypeColor(alert.type)}`}
-                            title={alert.title}
-                          ></div>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Alerts panel */}
-          <div className="w-96 bg-white shadow-xl border-l">
-            <div className="p-6 bg-gradient-to-r from-red-500 to-pink-500 text-white">
-              <h2 className="text-xl font-bold flex items-center">
-                <AlertTriangle className="w-6 h-6 mr-3" />
-                Alertes Actives
-              </h2>
-              <p className="text-red-100 text-sm mt-1">
-                {alerts.filter(a => a.status === 'pending').length} alertes en attente
-              </p>
-            </div>
-
-            <div className="p-6">
-              {/* Filter buttons */}
-              <div className="flex space-x-2 mb-6">
-                <button 
-                  onClick={() => setActiveFilter('all')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeFilter === 'all'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  Toutes ({alerts.length})
-                </button>
-                <button 
-                  onClick={() => setActiveFilter('pending')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeFilter === 'pending'
-                      ? 'bg-yellow-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  En attente ({alerts.filter(a => a.status === 'pending').length})
-                </button>
-                <button 
-                  onClick={() => setActiveFilter('completed')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeFilter === 'completed'
-                      ? 'bg-green-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  Terminées ({alerts.filter(a => a.status === 'completed').length})
-                </button>
-              </div>
-
-              {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
-              {loading && <p className="text-gray-600 text-sm mb-4">Chargement...</p>}
-
-              {/* Alerts list */}
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {filteredAlerts.map((alert) => (
-                  <div 
-                    key={alert.id} 
-                    className={`border-l-4 p-4 rounded-r-lg shadow-sm hover:shadow-md transition-shadow ${getPriorityColor(alert.priority)}`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h4 className="font-semibold text-sm">{alert.title}</h4>
-                      {alert.status === 'completed' && (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      )}
-                    </div>
-                    
-                    <p className="text-xs text-gray-700 mb-3">{alert.description}</p>
-                    
-                    <div className="flex items-center justify-between text-xs mb-3">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="w-3 h-3" />
-                        <span className="font-medium">{formatDate(alert.dueDate)}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <div className={`w-2 h-2 rounded-full ${getTypeColor(alert.type)}`}></div>
-                        <span className="text-gray-600">{alert.type}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      {alert.status === 'pending' && (
-                        <button 
-                          onClick={() => markAsCompleted(alert.id)}
-                          className="flex-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-md font-medium transition-colors"
-                        >
-                          ✓ Terminer
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => deleteAlert(alert.id)}
-                        className="flex-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-md font-medium transition-colors"
-                      >
-                        × Supprimer
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {filteredAlerts.length === 0 && !loading && (
-                <div className="text-center py-8 text-gray-500">
-                  <Bell className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>Aucune alerte trouvée</p>
-                </div>
-              )}
-            </div>
-          </div>
+            ))}
+          </nav>
         </div>
       </div>
 
-      {/* Modal pour nouvelle alerte */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="p-6 border-b bg-gradient-to-r from-red-50 to-pink-50">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                  <Plus className="w-5 h-5 mr-2 text-red-500" />
-                  Nouvelle Alerte
-                </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+      {/* Active Module Content */}
+      {activeModule && currentModule && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              {currentModule.icon ? currentModule.icon : null}
+              <h2 className="text-xl font-semibold text-gray-900">{currentModule.title}</h2>
             </div>
-            
-            <div className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Titre de l'alerte *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Ex: Échéance facture client"
-                    value={newAlert.title}
-                    onChange={(e) => handleInputChange('title', e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent h-20"
-                    placeholder="Description détaillée de l'alerte"
-                    value={newAlert.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date d'échéance *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    value={newAlert.dueDate}
-                    onChange={(e) => handleInputChange('dueDate', e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Priorité
-                  </label>
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    value={newAlert.priority}
-                    onChange={(e) => handleInputChange('priority', e.target.value)}
-                  >
-                    {priorityLevels.map(level => (
-                      <option key={level.value} value={level.value}>
-                        {level.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Type d'alerte *
-                  </label>
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    value={newAlert.type}
-                    onChange={(e) => handleInputChange('type', e.target.value)}
-                    required
-                  >
-                    {alertTypes.map(type => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {error && <p className="text-red-600 text-sm mt-4">{error}</p>}
-
-              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-6 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+            <div className="flex items-center space-x-2">
+              {showList && (
+                <Button onClick={handleCreateNew} className="flex items-center space-x-2">
+                  <Plus className="w-4 h-4" />
+                  <span>Nouveau</span>
+                </Button>
+              )}
+              {showForm && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowForm(false);
+                    setShowList(true);
+                    setEditingItem(null);
+                  }}
+                  className="flex items-center space-x-2"
                 >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNewAlert}
-                  disabled={loading}
-                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center space-x-2 font-medium transition-colors disabled:opacity-60"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{loading ? 'Création...' : 'Créer l\'alerte'}</span>
-                </button>
-              </div>
+                  <Eye className="w-4 h-4" />
+                  <span>Voir la liste</span>
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setActiveModule(null);
+                  setShowForm(false);
+                  setShowList(false);
+                  setEditingItem(null);
+                }}
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
           </div>
+
+          {/* Form View */}
+          {showForm && currentModule && (
+            <div className="mb-6">
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">
+                  Mode: {editingItem ? 'Édition' : 'Création'} | Module: {activeModule}
+                </p>
+              </div>
+              {React.createElement(currentModule.formComponent, {
+                onSubmit: handleFormSubmit,
+                initialData: editingItem,
+                isEdit: !!editingItem,
+              })}
+            </div>
+          )}
+
+          {/* List View */}
+          {showList && currentModule && currentModule.listComponent && (
+            <ErrorBoundary>
+              <div>
+                {getCurrentLoading() ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                  </div>
+                ) : getCurrentData().length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="text-gray-400 mb-4">
+                      <AlertTriangle className="w-16 h-16 mx-auto" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Aucune alerte disponible
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      Commencez par créer une nouvelle alerte
+                    </p>
+                    <Button onClick={handleCreateNew} className="flex items-center space-x-2">
+                      <Plus className="w-4 h-4" />
+                      <span>Créer la première alerte</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="min-h-[200px]">
+                    {React.createElement(currentModule.listComponent, {
+                      [getListPropName()]: getCurrentData(),
+                      onEdit: handleEdit,
+                      onDelete: handleDelete,
+                      onView: handleView
+                    })}
+                  </div>
+                )}
+              </div>
+            </ErrorBoundary>
+          )}
         </div>
       )}
     </div>
   );
-}
+};
+
+export default Alerts;

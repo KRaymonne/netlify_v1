@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { FileUpload } from '../../components/Personnel/FileUpload';
 
 interface User {
   id: number;
@@ -17,7 +19,15 @@ interface SanctionFormData {
   supportingDocument: string;
 }
 
-export function SanctionForm() {
+interface SanctionFormProps {
+  initialData?: any;
+  isEdit?: boolean;
+  onSubmit?: (data: any) => void;
+  onCancel?: () => void;
+}
+
+export function SanctionForm({ initialData, isEdit = false, onSubmit, onCancel }: SanctionFormProps) {
+  const { userId: authUserId, effectiveCountryCode } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState<SanctionFormData>({
     userId: 0,
@@ -36,7 +46,7 @@ export function SanctionForm() {
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const res = await fetch('/.netlify/functions/users');
+        const res = await fetch('/.netlify/functions/personnel-users');
         if (res.ok) {
           const data = await res.json();
           setUsers(data);
@@ -48,11 +58,26 @@ export function SanctionForm() {
     loadUsers();
   }, []);
 
+  // Populate form with initial data when editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        userId: initialData.userId || initialData.user?.id || 0,
+        sanctionType: initialData.sanctionType || '',
+        reason: initialData.reason || '',
+        sanctionDate: initialData.sanctionDate ? (initialData.sanctionDate.split('T')[0] || initialData.sanctionDate) : '',
+        durationDays: initialData.durationDays || 0,
+        decision: initialData.decision || '',
+        supportingDocument: initialData.supportingDocument || ''
+      });
+    }
+  }, [initialData]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'durationDays' ? parseInt(value) || 0 : value
+      [name]: name === 'durationDays' || name === 'userId' ? parseInt(value) || 0 : value
     }));
   };
 
@@ -63,27 +88,67 @@ export function SanctionForm() {
     setSuccess(null);
 
     try {
-      const res = await fetch('/.netlify/functions/sanctions', {
-        method: 'POST',
+      const url = isEdit 
+        ? `/.netlify/functions/personnel-sanctions?id=${initialData?.sanctionId}` 
+        : '/.netlify/functions/personnel-sanctions';
+        
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const mapCodeToEnum = (code: string): string => {
+        switch (code) {
+          case 'cameroun': return 'CAMEROON';
+          case 'coteIvoire': return 'IVORY_COAST';
+          case 'italie': return 'ITALIE';
+          case 'ghana': return 'GHANA';
+          case 'benin': return 'BENIN';
+          case 'togo': return 'TOGO';
+          case 'romanie': return 'ROMANIE';
+          default: return 'CAMEROON';
+        }
+      };
+      const payload = {
+        ...formData,
+        Inserteridentity: authUserId,
+        InserterCountry: mapCodeToEnum(effectiveCountryCode)
+      };
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la création de la sanction');
+        throw new Error(data.error || `Échec ${isEdit ? 'de la mise à jour' : 'de la création'} de la sanction`);
       }
 
-      setSuccess('Sanction créée avec succès');
-      setFormData({
-        userId: 0,
-        sanctionType: '',
-        reason: '',
-        sanctionDate: '',
-        durationDays: 0,
-        decision: '',
-        supportingDocument: ''
-      });
+      setSuccess(`Sanction ${isEdit ? 'mise à jour' : 'créée'} avec succès`);
+      
+      // Call onSubmit callback if provided
+      if (onSubmit) {
+        await onSubmit(formData);
+      }
+
+      // Return to list after successful edit
+      if (isEdit && onCancel) {
+        setTimeout(() => {
+          onCancel();
+        }, 1000);
+      }
+      
+      // Reset form only when creating new sanction
+      if (!isEdit) {
+        setFormData({
+          userId: 0,
+          sanctionType: '',
+          reason: '',
+          sanctionDate: '',
+          durationDays: 0,
+          decision: '',
+          supportingDocument: ''
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue');
     } finally {
@@ -95,7 +160,19 @@ export function SanctionForm() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Créer une Sanction</h2>
+      <h2 className="text-xl font-semibold mb-4">{isEdit ? 'Modifier une Sanction' : 'Créer une Sanction'}</h2>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">
+          {success}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,56 +277,37 @@ export function SanctionForm() {
             onChange={handleInputChange}
             rows={3}
             className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Détails de la décision finale..."
+            placeholder="Décrivez la décision prise..."
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Document justificatif
-          </label>
-          <input
-            type="file"
-            name="supportingDocument"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setFormData(prev => ({ ...prev, supportingDocument: file.name }));
-              }
-            }}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          />
-        </div>
+        <FileUpload
+          label="Document justificatif"
+          value={formData.supportingDocument}
+          onChange={(url) => setFormData(prev => ({ ...prev, supportingDocument: url || '' }))}
+        />
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        {success && <p className="text-green-600 text-sm">{success}</p>}
-
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={() => setFormData({
-              userId: 0,
-              sanctionType: '',
-              reason: '',
-              sanctionDate: '',
-              durationDays: 0,
-              decision: '',
-              supportingDocument: ''
-            })}
-            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-          >
-            Réinitialiser
-          </button>
+        <div className="flex justify-end space-x-3 pt-4">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Annuler
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60 hover:bg-blue-700"
+            className="px-4 py-2 border border-transparent rounded text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
           >
-            {loading ? 'Création...' : 'Créer la sanction'}
+            {loading ? 'En cours...' : (isEdit ? 'Mettre à jour' : 'Créer')}
           </button>
         </div>
       </form>
     </div>
   );
 }
+
+

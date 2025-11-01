@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { FileUpload } from '../../components/Personnel/FileUpload';
 
 interface User {
   id: number;
@@ -20,7 +22,15 @@ interface MedicalRecordFormData {
   medicalFile: string;
 }
 
-export function MedicalRecordForm() {
+interface MedicalRecordFormProps {
+  initialData?: any;
+  isEdit?: boolean;
+  onSubmit?: (data: any) => void;
+  onCancel?: () => void;
+}
+
+export function MedicalRecordForm({ initialData, isEdit = false, onSubmit, onCancel }: MedicalRecordFormProps = {}) {
+  const { userId: authUserId, effectiveCountryCode } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState<MedicalRecordFormData>({
     userId: 0,
@@ -38,11 +48,29 @@ export function MedicalRecordForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Populate form with initial data when editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        userId: initialData.userId || initialData.user?.id || 0,
+        visitDate: initialData.visitDate ? initialData.visitDate.split('T')[0] : '',
+        description: initialData.description || '',
+        diagnosis: initialData.diagnosis || '',
+        testsPerformed: initialData.testsPerformed || '',
+        testResults: initialData.testResults || '',
+        prescribedAction: initialData.prescribedAction || '',
+        notes: initialData.notes || '',
+        nextVisitDate: initialData.nextVisitDate ? initialData.nextVisitDate.split('T')[0] : '',
+        medicalFile: initialData.medicalFile || ''
+      });
+    }
+  }, [initialData]);
+
   // Load users on component mount
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const res = await fetch('/.netlify/functions/users');
+        const res = await fetch('/.netlify/functions/personnel-users');
         if (res.ok) {
           const data = await res.json();
           setUsers(data);
@@ -69,30 +97,68 @@ export function MedicalRecordForm() {
     setSuccess(null);
 
     try {
-      const res = await fetch('/.netlify/functions/medical-records', {
-        method: 'POST',
+      const mapCodeToEnum = (code: string): string => {
+        switch (code) {
+          case 'cameroun': return 'CAMEROON';
+          case 'coteIvoire': return 'IVORY_COAST';
+          case 'italie': return 'ITALIE';
+          case 'ghana': return 'GHANA';
+          case 'benin': return 'BENIN';
+          case 'togo': return 'TOGO';
+          case 'romanie': return 'ROMANIE';
+          default: return 'CAMEROON';
+        }
+      };
+      const payload = {
+        ...formData,
+        Inserteridentity: authUserId,
+        InserterCountry: mapCodeToEnum(effectiveCountryCode)
+      };
+
+      const medicalRecordId = initialData?.medicalRecordsId;
+      const url = medicalRecordId 
+        ? `/.netlify/functions/personnel-medical-records?id=${medicalRecordId}`
+        : '/.netlify/functions/personnel-medical-records';
+      const method = medicalRecordId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la création du dossier médical');
+        throw new Error(data.error || `Échec de la ${isEdit ? 'modification' : 'création'} du dossier médical`);
       }
 
-      setSuccess('Dossier médical créé avec succès');
-      setFormData({
-        userId: 0,
-        visitDate: '',
-        description: '',
-        diagnosis: '',
-        testsPerformed: '',
-        testResults: '',
-        prescribedAction: '',
-        notes: '',
-        nextVisitDate: '',
-        medicalFile: ''
-      });
+      setSuccess(`Dossier médical ${isEdit ? 'modifié' : 'créé'} avec succès`);
+      
+      if (onSubmit) {
+        await onSubmit(formData);
+      }
+
+      // Return to list after successful edit
+      if (isEdit && onCancel) {
+        setTimeout(() => {
+          onCancel();
+        }, 1000);
+      }
+
+      if (!isEdit) {
+        setFormData({
+          userId: 0,
+          visitDate: '',
+          description: '',
+          diagnosis: '',
+          testsPerformed: '',
+          testResults: '',
+          prescribedAction: '',
+          notes: '',
+          nextVisitDate: '',
+          medicalFile: ''
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue');
     } finally {
@@ -102,7 +168,7 @@ export function MedicalRecordForm() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Créer un Dossier Médical</h2>
+      <h2 className="text-xl font-semibold mb-4">{isEdit ? 'Modifier un Dossier Médical' : 'Créer un Dossier Médical'}</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -240,52 +306,50 @@ export function MedicalRecordForm() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Fichier médical
-          </label>
-          <input
-            type="file"
-            name="medicalFile"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setFormData(prev => ({ ...prev, medicalFile: file.name }));
-              }
-            }}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          />
-        </div>
+        <FileUpload
+          label="Fichier médical"
+          value={formData.medicalFile}
+          onChange={(url) => setFormData(prev => ({ ...prev, medicalFile: url || '' }))}
+        />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-600 text-sm">{success}</p>}
 
         <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={() => setFormData({
-              userId: 0,
-              visitDate: '',
-              description: '',
-              diagnosis: '',
-              testsPerformed: '',
-              testResults: '',
-              prescribedAction: '',
-              notes: '',
-              nextVisitDate: '',
-              medicalFile: ''
-            })}
-            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-          >
-            Réinitialiser
-          </button>
+          {isEdit && onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Annuler
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFormData({
+                userId: 0,
+                visitDate: '',
+                description: '',
+                diagnosis: '',
+                testsPerformed: '',
+                testResults: '',
+                prescribedAction: '',
+                notes: '',
+                nextVisitDate: '',
+                medicalFile: ''
+              })}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Réinitialiser
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60 hover:bg-blue-700"
           >
-            {loading ? 'Création...' : 'Créer le dossier médical'}
+            {loading ? (isEdit ? 'Modification...' : 'Création...') : (isEdit ? 'Modifier le dossier médical' : 'Créer le dossier médical')}
           </button>
         </div>
       </form>

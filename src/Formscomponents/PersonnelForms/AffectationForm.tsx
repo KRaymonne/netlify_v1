@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { FileUpload } from '../../components/Personnel/FileUpload';
 
 interface User {
   id: number;
@@ -18,7 +20,15 @@ interface AffectationFormData {
   attached_file: string;
 }
 
-export function AffectationForm() {
+interface AffectationFormProps {
+  initialData?: any;
+  isEdit?: boolean;
+  onSubmit?: (data: any) => void;
+  onCancel?: () => void;
+}
+
+export function AffectationForm({ initialData, isEdit = false, onSubmit, onCancel }: AffectationFormProps = {}) {
+  const { userId: authUserId, effectiveCountryCode } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState<AffectationFormData>({
     userId: 0,
@@ -34,11 +44,27 @@ export function AffectationForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Populate form with initial data when editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        userId: initialData.userId || initialData.user?.id || 0,
+        workLocation: initialData.workLocation || '',
+        site: initialData.site || '',
+        affectationtype: initialData.affectationtype || '',
+        description: initialData.description || '',
+        startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
+        endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
+        attached_file: initialData.attached_file || ''
+      });
+    }
+  }, [initialData]);
+
   // Load users on component mount
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const res = await fetch('/.netlify/functions/users');
+        const res = await fetch('/.netlify/functions/personnel-users');
         if (res.ok) {
           const data = await res.json();
           setUsers(data);
@@ -65,28 +91,65 @@ export function AffectationForm() {
     setSuccess(null);
 
     try {
-      const res = await fetch('/.netlify/functions/affectations', {
-        method: 'POST',
+      const mapCodeToEnum = (code: string): string => {
+        switch (code) {
+          case 'cameroun': return 'CAMEROON';
+          case 'coteIvoire': return 'IVORY_COAST';
+          case 'italie': return 'ITALIE';
+          case 'ghana': return 'GHANA';
+          case 'benin': return 'BENIN';
+          case 'togo': return 'TOGO';
+          case 'romanie': return 'ROMANIE';
+          default: return 'CAMEROON';
+        }
+      };
+      const payload = {
+        ...formData,
+        Inserteridentity: authUserId,
+        InserterCountry: mapCodeToEnum(effectiveCountryCode)
+      };
+      const affectationId = initialData?.affectationsId;
+      const url = affectationId 
+        ? `/.netlify/functions/personnel-affectations?id=${affectationId}`
+        : '/.netlify/functions/personnel-affectations';
+      const method = affectationId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la création de l\'affectation');
+        throw new Error(data.error || `Échec de la ${isEdit ? 'modification' : 'création'} de l'affectation`);
       }
 
-      setSuccess('Affectation créée avec succès');
-      setFormData({
-        userId: 0,
-        workLocation: '',
-        site: '',
-        affectationtype: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        attached_file: ''
-      });
+      setSuccess(`Affectation ${isEdit ? 'modifiée' : 'créée'} avec succès`);
+      
+      if (onSubmit) {
+        await onSubmit(formData);
+      }
+
+      // Return to list after successful edit
+      if (isEdit && onCancel) {
+        setTimeout(() => {
+          onCancel();
+        }, 1000);
+      }
+
+      if (!isEdit) {
+        setFormData({
+          userId: 0,
+          workLocation: '',
+          site: '',
+          affectationtype: '',
+          description: '',
+          startDate: '',
+          endDate: '',
+          attached_file: ''
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue');
     } finally {
@@ -98,7 +161,7 @@ export function AffectationForm() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Créer une Affectation</h2>
+      <h2 className="text-xl font-semibold mb-4">{isEdit ? 'Modifier une Affectation' : 'Créer une Affectation'}</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -224,50 +287,48 @@ export function AffectationForm() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Document d'affectation
-          </label>
-          <input
-            type="file"
-            name="attached_file"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setFormData(prev => ({ ...prev, attached_file: file.name }));
-              }
-            }}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          />
-        </div>
+        <FileUpload
+          label="Document d'affectation"
+          value={formData.attached_file}
+          onChange={(url) => setFormData(prev => ({ ...prev, attached_file: url || '' }))}
+        />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-600 text-sm">{success}</p>}
 
         <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={() => setFormData({
-              userId: 0,
-              workLocation: '',
-              site: '',
-              affectationtype: '',
-              description: '',
-              startDate: '',
-              endDate: '',
-              attached_file: ''
-            })}
-            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-          >
-            Réinitialiser
-          </button>
+          {isEdit && onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Annuler
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFormData({
+                userId: 0,
+                workLocation: '',
+                site: '',
+                affectationtype: '',
+                description: '',
+                startDate: '',
+                endDate: '',
+                attached_file: ''
+              })}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Réinitialiser
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60 hover:bg-blue-700"
           >
-            {loading ? 'Création...' : 'Créer l\'affectation'}
+            {loading ? (isEdit ? 'Modification...' : 'Création...') : (isEdit ? 'Modifier l\'affectation' : 'Créer l\'affectation')}
           </button>
         </div>
       </form>

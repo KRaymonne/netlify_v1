@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { FileUpload } from '../../components/Personnel/FileUpload';
 
 interface User {
   id: number;
@@ -21,7 +23,15 @@ interface ContractFormData {
   contractFile: string;
 }
 
-export function ContractForm() {
+interface ContractFormProps {
+  initialData?: any;
+  isEdit?: boolean;
+  onSubmit?: (data: any) => void;
+  onCancel?: () => void;
+}
+
+export function ContractForm({ initialData, isEdit = false, onSubmit, onCancel }: ContractFormProps = {}) {
+  const { userId: authUserId, effectiveCountryCode } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState<ContractFormData>({
     userId: 0,
@@ -40,11 +50,30 @@ export function ContractForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Populate form with initial data when editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        userId: initialData.userId || initialData.user?.id || 0,
+        contractType: initialData.contractType || '',
+        startDate: initialData.startDate ? initialData.startDate.split('T')[0] : '',
+        endDate: initialData.endDate ? initialData.endDate.split('T')[0] : '',
+        post: initialData.post || '',
+        department: initialData.department || '',
+        unit: initialData.unit || '',
+        grossSalary: initialData.grossSalary || 0,
+        netSalary: initialData.netSalary || 0,
+        currency: initialData.currency || 'XOF',
+        contractFile: initialData.contractFile || ''
+      });
+    }
+  }, [initialData]);
+
   // Load users on component mount
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const res = await fetch('/.netlify/functions/users');
+        const res = await fetch('/.netlify/functions/personnel-users');
         if (res.ok) {
           const data = await res.json();
           setUsers(data);
@@ -71,31 +100,69 @@ export function ContractForm() {
     setSuccess(null);
 
     try {
-      const res = await fetch('/.netlify/functions/contracts', {
-        method: 'POST',
+      const mapCodeToEnum = (code: string): string => {
+        switch (code) {
+          case 'cameroun': return 'CAMEROON';
+          case 'coteIvoire': return 'IVORY_COAST';
+          case 'italie': return 'ITALIE';
+          case 'ghana': return 'GHANA';
+          case 'benin': return 'BENIN';
+          case 'togo': return 'TOGO';
+          case 'romanie': return 'ROMANIE';
+          default: return 'CAMEROON';
+        }
+      };
+      const payload = {
+        ...formData,
+        Inserteridentity: authUserId,
+        InserterCountry: mapCodeToEnum(effectiveCountryCode)
+      };
+
+      const contractId = initialData?.contractId;
+      const url = contractId 
+        ? `/.netlify/functions/personnel-contracts?id=${contractId}`
+        : '/.netlify/functions/personnel-contracts';
+      const method = contractId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Échec de la création du contrat');
+        throw new Error(data.error || `Échec de la ${isEdit ? 'modification' : 'création'} du contrat`);
       }
 
-      setSuccess('Contrat créé avec succès');
-      setFormData({
-        userId: 0,
-        contractType: '',
-        startDate: '',
-        endDate: '',
-        post: '',
-        department: '',
-        unit: '',
-        grossSalary: 0,
-        netSalary: 0,
-        currency: 'XOF',
-        contractFile: ''
-      });
+      setSuccess(`Contrat ${isEdit ? 'modifié' : 'créé'} avec succès`);
+      
+      if (onSubmit) {
+        await onSubmit(formData);
+      }
+
+      // Return to list after successful edit
+      if (isEdit && onCancel) {
+        setTimeout(() => {
+          onCancel();
+        }, 1000);
+      }
+
+      if (!isEdit) {
+        setFormData({
+          userId: 0,
+          contractType: '',
+          startDate: '',
+          endDate: '',
+          post: '',
+          department: '',
+          unit: '',
+          grossSalary: 0,
+          netSalary: 0,
+          currency: 'XOF',
+          contractFile: ''
+        });
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue');
     } finally {
@@ -105,7 +172,7 @@ export function ContractForm() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Créer un Contrat</h2>
+      <h2 className="text-xl font-semibold mb-4">{isEdit ? 'Modifier un Contrat' : 'Créer un Contrat'}</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -268,61 +335,64 @@ export function ContractForm() {
               required
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="XOF">XOF (Franc CFA)</option>
-              <option value="EUR">EUR (Euro)</option>
-              <option value="USD">USD (Dollar US)</option>
-              <option value="GHS">GHS (Cedi Ghanéen)</option>
+              <option value="XAF">Franc CFA BEAC (XAF)</option>
+              <option value="XOF">Franc CFA UEMOA (XOF)</option>
+              <option value="EUR">Euro (EUR)</option>
+              <option value="GNF">Franc Guinéen (GNF)</option>
+              <option value="GHS">Cedi Ghanéen (GHS)</option>
+              <option value="RON">Leu Roumain (RON)</option>
+              <option value="SLE">Leone (SLE)</option>
+              <option value="USD">Dollar Américain (USD)</option>
             </select>
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Fichier du contrat
-          </label>
-          <input
-            type="file"
-            name="contractFile"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setFormData(prev => ({ ...prev, contractFile: file.name }));
-              }
-            }}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            accept=".pdf,.doc,.docx"
-          />
-        </div>
+        <FileUpload
+          label="Fichier du contrat"
+          value={formData.contractFile}
+          onChange={(url) => setFormData(prev => ({ ...prev, contractFile: url || '' }))}
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+        />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-600 text-sm">{success}</p>}
 
         <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={() => setFormData({
-              userId: 0,
-              contractType: '',
-              startDate: '',
-              endDate: '',
-              post: '',
-              department: '',
-              unit: '',
-              grossSalary: 0,
-              netSalary: 0,
-              currency: 'XOF',
-              contractFile: ''
-            })}
-            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-          >
-            Réinitialiser
-          </button>
+          {isEdit && onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Annuler
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFormData({
+                userId: 0,
+                contractType: '',
+                startDate: '',
+                endDate: '',
+                post: '',
+                department: '',
+                unit: '',
+                grossSalary: 0,
+                netSalary: 0,
+                currency: 'XOF',
+                contractFile: ''
+              })}
+              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            >
+              Réinitialiser
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60 hover:bg-blue-700"
           >
-            {loading ? 'Création...' : 'Créer le contrat'}
+            {loading ? (isEdit ? 'Modification...' : 'Création...') : (isEdit ? 'Modifier le contrat' : 'Créer le contrat')}
           </button>
         </div>
       </form>

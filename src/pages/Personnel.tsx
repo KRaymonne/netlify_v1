@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { 
-  Search,
-  FileDown,
   FilePlus
 } from 'lucide-react';
 
@@ -12,7 +10,19 @@ import { BonusForm } from '../Formscomponents/PersonnelForms/BonusForm';
 import { SanctionForm } from '../Formscomponents/PersonnelForms/SanctionForm';
 import { MedicalRecordForm } from '../Formscomponents/PersonnelForms/MedicalRecordForm';
 import { AffectationForm } from '../Formscomponents/PersonnelForms/AffectationForm';
-import { UsersCreate } from '../Formscomponents/personnelforms/UsersCreate';
+import { UsersCreate } from '../Formscomponents/PersonnelForms/UsersCreate';
+
+// Import list components
+import {
+  UserList,
+  ContractList,
+  AbsenceList,
+  BonusList,
+  SanctionList,
+  MedicalRecordList,
+  AffectationList
+} from '../Formscomponents/PersonnelForms/lists';
+
 
 // Data types
 interface User {
@@ -21,12 +31,31 @@ interface User {
   firstName: string;
   lastName: string;
   email: string;
+  password: string;
   role: string;
   status: string;
-  department: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  devise: string;
+  civilityDropdown: string;
+  maritalStatus: string;
+  nationality: string;
+  identityType: string;
+  identity: string;
   workcountry: string;
+  address: string;
+  phone: string;
+  phoneno: string;
+  gender: string;
+  country: string;
+  emergencyName: string;
+  emergencyContact: string;
+  childrenCount: number;
+  department: string;
+  salary: number;
   hireDate: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface Contract {
@@ -161,8 +190,8 @@ interface Affectation {
 }
 
 export function Personnel() {
-  const [activeMainTab, setActiveMainTab] = useState('Recherche');
-  const [activeTab, setActiveTab] = useState('Absences');
+  const [activeMainTab, setActiveMainTab] = useState('Informations personnelles');
+  const [activeTab, setActiveTab] = useState('Informations personnelles');
   
   // Data states
   const [users, setUsers] = useState<User[]>([]);
@@ -173,9 +202,15 @@ export function Personnel() {
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [affectations, setAffectations] = useState<Affectation[]>([]);
   
-  // Loading and error states
+  // Loading state
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Editing state
+  const [editingItem, setEditingItem] = useState<any>(null);
+
+  // Country filter state
+  const [insertCountryFilter, setInsertCountryFilter] = useState<string>('');
+  const WORKCOUNTRY_OPTIONS = ['IVORY_COAST','GHANA','BENIN','CAMEROON','TOGO','ROMANIE','ITALIE'];
 
   const tabs = [
     'Informations personnelles',
@@ -190,430 +225,349 @@ export function Personnel() {
   // Data fetching functions
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/.netlify/functions/users');
-      if (!response.ok) throw new Error('Failed to fetch users');
+      const response = await fetch('/.netlify/functions/personnel-users');
+      if (!response.ok) {
+        console.error('Failed to fetch users, status:', response.status);
+        return;
+      }
       const data = await response.json();
-      setUsers(data);
+      console.log('Users fetched:', data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching users:', err);
-      setError('Erreur lors du chargement des utilisateurs');
+      setUsers([]);
     }
   };
 
   const fetchContracts = async () => {
     try {
-      const response = await fetch('/.netlify/functions/contracts');
-      if (!response.ok) throw new Error('Failed to fetch contracts');
+      const url = insertCountryFilter 
+        ? `/.netlify/functions/personnel-contracts?InserterCountry=${insertCountryFilter}`
+        : '/.netlify/functions/personnel-contracts';
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch contracts, status:', response.status);
+        return;
+      }
       const data = await response.json();
-      setContracts(data);
+      console.log('Contracts fetched:', data);
+      setContracts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching contracts:', err);
-      setError('Erreur lors du chargement des contrats');
+      setContracts([]);
     }
   };
 
   const fetchAbsences = async () => {
     try {
-      const response = await fetch('/.netlify/functions/absences');
-      if (!response.ok) throw new Error('Failed to fetch absences');
+      const url = insertCountryFilter 
+        ? `/.netlify/functions/personnel-absences?InserterCountry=${insertCountryFilter}`
+        : '/.netlify/functions/personnel-absences';
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch absences, status:', response.status);
+        return;
+      }
       const data = await response.json();
-      setAbsences(data);
+      console.log('Absences fetched:', data);
+      setAbsences(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching absences:', err);
-      setError('Erreur lors du chargement des absences');
+      setAbsences([]);
     }
   };
 
   const fetchBonuses = async () => {
     try {
-      const response = await fetch('/.netlify/functions/bonuses');
-      if (!response.ok) throw new Error('Failed to fetch bonuses');
+      const url = insertCountryFilter 
+        ? `/.netlify/functions/personnel-bonuses?InserterCountry=${insertCountryFilter}`
+        : '/.netlify/functions/personnel-bonuses';
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch bonuses, status:', response.status);
+        return;
+      }
       const data = await response.json();
-      setBonuses(data);
+      console.log('Bonuses fetched:', data);
+      setBonuses(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching bonuses:', err);
-      setError('Erreur lors du chargement des primes');
+      setBonuses([]);
     }
   };
 
   const fetchSanctions = async () => {
     try {
-      const response = await fetch('/.netlify/functions/sanctions');
-      if (!response.ok) throw new Error('Failed to fetch sanctions');
+      const url = insertCountryFilter 
+        ? `/.netlify/functions/personnel-sanctions?InserterCountry=${insertCountryFilter}`
+        : '/.netlify/functions/personnel-sanctions';
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch sanctions, status:', response.status);
+        return;
+      }
       const data = await response.json();
-      setSanctions(data);
+      console.log('Sanctions fetched:', data);
+      setSanctions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching sanctions:', err);
-      setError('Erreur lors du chargement des sanctions');
+      setSanctions([]);
     }
   };
 
   const fetchMedicalRecords = async () => {
     try {
-      const response = await fetch('/.netlify/functions/medical-records');
-      if (!response.ok) throw new Error('Failed to fetch medical records');
+      const url = insertCountryFilter 
+        ? `/.netlify/functions/personnel-medical-records?InserterCountry=${insertCountryFilter}`
+        : '/.netlify/functions/personnel-medical-records';
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch medical records, status:', response.status);
+        return;
+      }
       const data = await response.json();
-      setMedicalRecords(data);
+      console.log('Medical records fetched:', data);
+      setMedicalRecords(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching medical records:', err);
-      setError('Erreur lors du chargement des dossiers médicaux');
+      setMedicalRecords([]);
     }
   };
 
   const fetchAffectations = async () => {
     try {
-      const response = await fetch('/.netlify/functions/affectations');
-      if (!response.ok) throw new Error('Failed to fetch affectations');
+      const url = insertCountryFilter 
+        ? `/.netlify/functions/personnel-affectations?InserterCountry=${insertCountryFilter}`
+        : '/.netlify/functions/personnel-affectations';
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch affectations, status:', response.status);
+        return;
+      }
       const data = await response.json();
-      setAffectations(data);
+      console.log('Affectations fetched:', data);
+      setAffectations(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching affectations:', err);
-      setError('Erreur lors du chargement des affectations');
+      setAffectations([]);
     }
   };
 
-  // Load data when component mounts
+  // Load data only for the active tab
   useEffect(() => {
-    const loadData = async () => {
+    const loadDataForTab = async () => {
+      if (activeMainTab === 'Création') return; // Don't load when in creation mode
+      
       setLoading(true);
-      setError(null);
       try {
-        await Promise.all([
-          fetchUsers(),
-          fetchContracts(),
-          fetchAbsences(),
-          fetchBonuses(),
-          fetchSanctions(),
-          fetchMedicalRecords(),
-          fetchAffectations()
-        ]);
+        switch (activeTab) {
+          case 'Informations personnelles':
+            await fetchUsers();
+            break;
+          case 'Contrats':
+            await fetchContracts();
+            break;
+          case 'Affectations':
+            await fetchAffectations();
+            break;
+          case 'Absences':
+            await fetchAbsences();
+            break;
+          case 'Primes':
+            await fetchBonuses();
+            break;
+          case 'Sanctions':
+            await fetchSanctions();
+            break;
+          case 'Dossier Médical':
+            await fetchMedicalRecords();
+            break;
+        }
       } catch (err) {
         console.error('Error loading data:', err);
       } finally {
         setLoading(false);
       }
     };
-    loadData();
-  }, []);
+    loadDataForTab();
+  }, [activeTab, activeMainTab, insertCountryFilter]);
 
-  // Get current data based on active tab
+  // Reset editing item when switching away from creation
+  useEffect(() => {
+    if (activeMainTab !== 'Création') {
+      setEditingItem(null);
+    }
+  }, [activeMainTab]);
+
+  // Handle view action
+  const handleView = () => {
+    // Handled by individual list components
+  };
+
+  // Handle edit action
+  const handleEdit = (item: any) => {
+    setEditingItem(item);
+    setActiveMainTab('Création');
+  };
+
+  // Handle delete action
+  const handleDelete = async (id: number) => {
+    try {
+      let endpoint = '';
+      let fetchFn: () => Promise<void>;
+
+      switch (activeTab) {
+        case 'Informations personnelles':
+          endpoint = `/.netlify/functions/personnel-users?id=${id}`;
+          fetchFn = fetchUsers;
+          break;
+        case 'Contrats':
+          endpoint = `/.netlify/functions/personnel-contracts?id=${id}`;
+          fetchFn = fetchContracts;
+          break;
+        case 'Affectations':
+          endpoint = `/.netlify/functions/personnel-affectations?id=${id}`;
+          fetchFn = fetchAffectations;
+          break;
+        case 'Absences':
+          endpoint = `/.netlify/functions/personnel-absences?id=${id}`;
+          fetchFn = fetchAbsences;
+          break;
+        case 'Primes':
+          endpoint = `/.netlify/functions/personnel-bonuses?id=${id}`;
+          fetchFn = fetchBonuses;
+          break;
+        case 'Sanctions':
+          endpoint = `/.netlify/functions/personnel-sanctions?id=${id}`;
+          fetchFn = fetchSanctions;
+          break;
+        case 'Dossier Médical':
+          endpoint = `/.netlify/functions/personnel-medical-records?id=${id}`;
+          fetchFn = fetchMedicalRecords;
+          break;
+        default:
+          return;
+      }
+
+      if (endpoint) {
+        const response = await fetch(endpoint, { method: 'DELETE' });
+        if (response.ok) {
+          await fetchFn();
+          console.log('Item deleted successfully');
+        } else {
+          console.error('Failed to delete item');
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };
+
+  // Get filtered data based on active tab
   const getCurrentData = () => {
+    const applyFilter = (arr: any[]) => insertCountryFilter 
+      ? arr.filter((x: any) => x.InserterCountry === insertCountryFilter) 
+      : arr;
+
     switch (activeTab) {
+      case 'Contrats':
+        return applyFilter(contracts);
+      case 'Affectations':
+        return applyFilter(affectations);
+      case 'Absences':
+        return applyFilter(absences);
+      case 'Primes':
+        return applyFilter(bonuses);
+      case 'Sanctions':
+        return applyFilter(sanctions);
+      case 'Dossier Médical':
+        return applyFilter(medicalRecords);
       case 'Informations personnelles':
         return users;
-      case 'Contrats':
-        return contracts;
-      case 'Affectations':
-        return affectations;
-      case 'Absences':
-        return absences;
-      case 'Primes':
-        return bonuses;
-      case 'Sanctions':
-        return sanctions;
-      case 'Dossier Médical':
-        return medicalRecords;
       default:
         return [];
     }
   };
 
-  // Rendu des tableaux de recherche
-  const renderSearchTable = () => {
-    const data = getCurrentData();
-
-    // Show loading state
+  // Render list component based on active tab
+  const renderList = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center py-8">
-          <div className="text-gray-500">Chargement des données...</div>
+          <div className="flex flex-col items-center space-y-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="text-gray-500">Chargement des données...</div>
+          </div>
         </div>
       );
     }
 
-    // Show error state
-    if (error) {
-      return (
-        <div className="flex justify-center items-center py-8">
-          <div className="text-red-500">{error}</div>
-        </div>
-      );
-    }
-
-    // Show empty state
-    if (data.length === 0) {
-      return (
-        <div className="flex justify-center items-center py-8">
-          <div className="text-gray-500">Aucune donnée disponible</div>
-        </div>
-      );
-    }
+    const currentData = getCurrentData();
 
     switch (activeTab) {
       case 'Informations personnelles':
         return (
-          <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1200px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matricule</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom complet</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rôle</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Département</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pays de travail</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date d'embauche</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Créé le</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {(data as User[]).map((user: User) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{user.id}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900 font-medium">{user.employeeNumber}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{user.firstName} {user.lastName}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{user.email}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">
-                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        user.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                        user.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800' :
-                        user.status === 'FIRED' ? 'bg-red-100 text-red-800' :
-                        user.status === 'ON_HOLIDAY' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {user.status === 'ACTIVE' ? 'Actif' : 
-                         user.status === 'SUSPENDED' ? 'Suspendu' : 
-                         user.status === 'FIRED' ? 'Licencié' : 
-                         user.status === 'ON_HOLIDAY' ? 'En congé' : user.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{user.department}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{user.workcountry}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(user.hireDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(user.createdAt).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs mr-2">Modifier</button>
-                      <button className="text-red-600 hover:text-red-800 text-xs">Supprimer</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <UserList
+            users={currentData as User[]}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+          />
         );
-
       case 'Contrats':
         return (
-          <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Département</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poste</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salaire Net</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Début</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {(data as Contract[]).map((contract: Contract) => (
-                  <tr key={contract.contractId} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{contract.user.firstName} {contract.user.lastName}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{contract.contractType}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{contract.department}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{contract.post}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{contract.netSalary.toLocaleString()} {contract.currency}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(contract.startDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ContractList
+            contracts={currentData as Contract[]}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+          />
         );
-
       case 'Affectations':
         return (
-          <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lieu d'affectation</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Début</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Fin</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {(data as Affectation[]).map((affectation: Affectation) => (
-                  <tr key={affectation.affectationsId} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.user.firstName} {affectation.user.lastName}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.workLocation}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.site}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.affectationtype}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(affectation.startDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{affectation.endDate ? new Date(affectation.endDate).toLocaleDateString('fr-FR') : '-'}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AffectationList
+            affectations={currentData as Affectation[]}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+          />
         );
-
       case 'Absences':
         return (
-          <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type Absence</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Début</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jours</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Fin</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {(data as Absence[]).map((absence: Absence) => (
-                  <tr key={absence.absenceId} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{absence.user.firstName} {absence.user.lastName}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{absence.absenceType}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(absence.startDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{absence.daysCount}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(absence.endDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AbsenceList
+            absences={currentData as Absence[]}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+          />
         );
-
       case 'Primes':
         return (
-          <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type Prime</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Attribution</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {(data as Bonus[]).map((bonus: Bonus) => (
-                  <tr key={bonus.bonusId} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{bonus.user.firstName} {bonus.user.lastName}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{bonus.bonusType}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{bonus.amount.toLocaleString()} {bonus.currency}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(bonus.awardDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        bonus.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                        bonus.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {bonus.status === 'APPROVED' ? 'Approuvé' : 
-                         bonus.status === 'PENDING' ? 'En attente' : 
-                         bonus.status === 'REJECTED' ? 'Rejeté' : bonus.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BonusList
+            bonuses={currentData as Bonus[]}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+          />
         );
-
       case 'Sanctions':
         return (
-          <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type Sanction</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motif</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durée</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {(data as Sanction[]).map((sanction: Sanction) => (
-                  <tr key={sanction.sanctionId} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.user.firstName} {sanction.user.lastName}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.sanctionType}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.reason}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(sanction.sanctionDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{sanction.durationDays ? `${sanction.durationDays} jours` : '-'}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SanctionList
+            sanctions={currentData as Sanction[]}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+          />
         );
-
       case 'Dossier Médical':
         return (
-          <div className="bg-white border rounded-lg overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employé</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Visite</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diagnostic</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {(data as MedicalRecord[]).map((record: MedicalRecord) => (
-                  <tr key={record.medicalRecordsId} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{record.user.firstName} {record.user.lastName}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{new Date(record.visitDate).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{record.description || '-'}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900">{record.diagnosis || '-'}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 text-xs">Modifier</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <MedicalRecordList
+            medicalRecords={currentData as MedicalRecord[]}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+          />
         );
-
       default:
         return <div className="text-center py-8 text-gray-500">Aucune donnée disponible</div>;
     }
@@ -621,25 +575,29 @@ export function Personnel() {
 
   // Contenu pour chaque page de création
   const renderCreationPageContent = () => {
+    const isEdit = !!editingItem;
+    
     switch (activeTab) {
       case 'Sanctions':
-        return <SanctionForm />;
+        return <SanctionForm initialData={editingItem} isEdit={isEdit} onSubmit={fetchSanctions} onCancel={() => setActiveMainTab(activeTab)} />;
       case 'Primes':
-        return <BonusForm />;
+        return <BonusForm initialData={editingItem} isEdit={isEdit} onSubmit={fetchBonuses} onCancel={() => setActiveMainTab(activeTab)} />;
       case 'Absences':
-        return <AbsenceForm />;
+        return <AbsenceForm initialData={editingItem} isEdit={isEdit} onSubmit={fetchAbsences} onCancel={() => setActiveMainTab(activeTab)} />;
       case 'Dossier Médical':  
-        return <MedicalRecordForm />;
+        return <MedicalRecordForm initialData={editingItem} isEdit={isEdit} onSubmit={fetchMedicalRecords} onCancel={() => setActiveMainTab(activeTab)} />;
       case 'Contrats': 
-        return <ContractForm />;
+        return <ContractForm initialData={editingItem} isEdit={isEdit} onSubmit={fetchContracts} onCancel={() => setActiveMainTab(activeTab)} />;
       case 'Affectations': 
-        return <AffectationForm />;
+        return <AffectationForm initialData={editingItem} isEdit={isEdit} onSubmit={fetchAffectations} onCancel={() => setActiveMainTab(activeTab)} />;
       case 'Informations personnelles':
-        return <UsersCreate onUserCreated={fetchUsers} />;
+        return <UsersCreate onUserCreated={fetchUsers} initialData={editingItem} isEdit={isEdit} onCancel={() => setActiveMainTab(activeTab)} />;
       default:
         return <div>Contenu non disponible</div>;
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col overflow-hidden">
@@ -654,34 +612,21 @@ export function Personnel() {
             </div>
           </div>
 
-          {/* Main Tabs - Recherche / Création */}
+          {/* Main Content Area */}
           <div className="bg-white rounded-lg shadow mb-6">
             <div className="border-b border-gray-200">
-              <nav className="flex">
-                <button
-                  onClick={() => setActiveMainTab('Recherche')}
-                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeMainTab === 'Recherche'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Recherche
-                </button>
+              <div className="px-4 py-3 flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-gray-900">Gestion du Personnel</h2>
                 <button
                   onClick={() => setActiveMainTab('Création')}
-                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeMainTab === 'Création'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm flex items-center space-x-2 transition-colors"
                 >
-                  Création
+                  <FilePlus size={16} />
+                  <span>Créer nouveau</span>
                 </button>
-              </nav>
+              </div>
             </div>
 
-            {/* Content based on main tab */}
             <div className="p-4 md:p-6">
               {/* Secondary Tabs */}
               <div className="border-b border-gray-200 mb-6">
@@ -689,9 +634,12 @@ export function Personnel() {
                   {tabs.map((tab) => (
                     <button
                       key={tab}
-                      onClick={() => setActiveTab(tab)}
+                      onClick={() => {
+                        setActiveTab(tab);
+                        setActiveMainTab(tab);
+                      }}
                       className={`px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                        activeTab === tab
+                        activeTab === tab && activeMainTab !== 'Création'
                           ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
@@ -705,46 +653,64 @@ export function Personnel() {
   
 
               {/* Content */}
-              {activeMainTab === 'Recherche' ? (
-                <div className="space-y-4">
-                  {/* Search Section */}
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex items-center space-x-2 w-full max-w-3xl">
-                      <div className="relative flex-1">
-                        <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Rechercher un employé..."
-                          className="border border-gray-300 rounded pl-10 pr-4 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-2 transition-colors">
-                        <Search size={16} />
-                        <span className="hidden sm:inline">Rechercher</span>
-                      </button>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <button className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded text-sm flex items-center space-x-2 transition-colors">
-                        <FileDown size={16} />
-                        <span className="hidden sm:inline">Exporter</span>
-                      </button>
-                      <button className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-2 transition-colors">
-                        <FilePlus size={16} />
-                        <span>Nouveau</span>
-                      </button>
-                    </div>
+              {activeMainTab === 'Création' ? (
+                <div>
+                  <div className="mb-4 flex justify-between items-center">
+                    <button
+                      onClick={() => setActiveMainTab(activeTab)}
+                      className="text-blue-600 hover:text-blue-800 flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      <span>Retour à la liste</span>
+                    </button>
                   </div>
-                  
-                  {renderSearchTable()}
+                  {editingItem && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800 font-medium">
+                        Mode édition : Modification en cours
+                      </p>
+                    </div>
+                  )}
+                  {renderCreationPageContent()}
                 </div>
               ) : (
-                renderCreationPageContent()
+                <div className="space-y-4">
+                  <div className="flex justify-end items-center space-x-3">
+                    {(activeTab === 'Contrats' || activeTab === 'Affectations' || activeTab === 'Absences' || 
+                      activeTab === 'Primes' || activeTab === 'Sanctions' || activeTab === 'Dossier Médical') && (
+                      <select
+                        value={insertCountryFilter}
+                        onChange={(e) => setInsertCountryFilter(e.target.value)}
+                        className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Tous les pays (InserterCountry)</option>
+                        {WORKCOUNTRY_OPTIONS.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    )}
+                    <button 
+                      onClick={() => {
+                        setActiveMainTab('Création');
+                        setEditingItem(null);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-2 transition-colors"
+                    >
+                      <FilePlus size={16} />
+                      <span>Nouveau</span>
+                    </button>
+                  </div>
+                  
+                  {renderList()}
+                </div>
               )}
             </div>
           </div>
         </main>
       </div>
+
     </div>
   );
 }
