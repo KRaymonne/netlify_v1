@@ -11,7 +11,7 @@ const EquipmentForm: React.FC<EquipmentFormProps> = ({ onSubmit, initialData, is
   const [formData, setFormData] = useState({
     name: '',
     category: 'TOPOGRAPHIC_MATERIALS',
-    type: 'TOTAL_STATION',
+    type: 'NIVEAUX_LASER',
     brand: 'LEICA',
     model: '',
     serialNumber: '',
@@ -34,7 +34,7 @@ const EquipmentForm: React.FC<EquipmentFormProps> = ({ onSubmit, initialData, is
       setFormData({
         name: initialData.name || '',
         category: initialData.category || 'TOPOGRAPHIC_MATERIALS',
-        type: initialData.type || 'TOTAL_STATION',
+        type: initialData.type || 'NIVEAUX_LASER',
         brand: initialData.brand || 'LEICA',
         model: initialData.model || '',
         serialNumber: initialData.serialNumber || '',
@@ -116,11 +116,22 @@ const EquipmentForm: React.FC<EquipmentFormProps> = ({ onSubmit, initialData, is
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="TOTAL_STATION">Station Totale</option>
-              <option value="GPS">GPS</option>
-              <option value="LEVEL">Niveau</option>
-              <option value="TABLET">Tablette</option>
-              <option value="OTHERS">Autres</option>
+              <option value="NIVEAUX_LASER">Niveaux Laser</option>
+              <option value="PELETEUSES">Pelleuses</option>
+              <option value="BETONNIERES">Bétonnières</option>
+              <option value="SCIES_A_BETON">Scies à Béton</option>
+              <option value="ECHAFAUDAGES">Échafaudages</option>
+              <option value="COMPRESSEURS_AIR">Compresseurs d'Air</option>
+              <option value="ENGIN_DE_COMPACTAGE">Engin de Compactage</option>
+              <option value="CAMIONS_DE_TRANSPORT">Camions de Transport</option>
+              <option value="MESUREURS_DE_DISTANCE_LASER">Mesureurs de Distance Laser</option>
+              <option value="GENERATEURS">Générateurs</option>
+              <option value="ORDINATEURS_PORTABLES">Ordinateurs Portables</option>
+              <option value="TABLETTES">Tablettes</option>
+              <option value="LOGICIELS_DE_GESTION_DE_PROJET">Logiciels de Gestion de Projet</option>
+              <option value="DRONES">Drones</option>
+              <option value="IMPRIMANTES_3D">Imprimantes 3D</option>
+              <option value="OTHER_Equipement">Autre Équipement</option>
             </select>
           </div>
 
@@ -137,7 +148,15 @@ const EquipmentForm: React.FC<EquipmentFormProps> = ({ onSubmit, initialData, is
             >
               <option value="LEICA">Leica</option>
               <option value="TRIMBLE">Trimble</option>
-              <option value="OTHER_BRAND">Autre</option>
+              <option value="TOPCON">Topcon</option>
+              <option value="SOKKIA">Sokkia</option>
+              <option value="NIKON">Nikon</option>
+              <option value="PENTAX">Pentax</option>
+              <option value="SPECTRA">Spectra</option>
+              <option value="GEO_FENNEL">Geo Fennel</option>
+              <option value="SOUTH">South</option>
+              <option value="STONEX">Stonex</option>
+              <option value="OTHER_BRAND">Autre Marque</option>
             </select>
           </div>
 

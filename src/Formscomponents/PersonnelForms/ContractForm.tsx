@@ -352,6 +352,7 @@ export function ContractForm({ initialData, isEdit = false, onSubmit, onCancel }
           value={formData.contractFile}
           onChange={(url) => setFormData(prev => ({ ...prev, contractFile: url || '' }))}
           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          useSupabase={false}
         />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}

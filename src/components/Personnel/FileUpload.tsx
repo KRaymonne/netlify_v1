@@ -10,6 +10,7 @@ interface FileUploadProps {
   accept?: string;
   folder?: string;
   className?: string;
+  useSupabase?: boolean; // true = Supabase, false = local upload to enterprisefiles
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -19,7 +20,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onChange,
   accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png',
   folder = 'public',
-  className = ''
+  className = '',
+  useSupabase = true, // Default to Supabase for backward compatibility
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -34,42 +36,85 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     setUploadProgress(0);
 
     try {
-      // Create a unique filename
-      const timestamp = Date.now();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${timestamp}-${file.name}`;
-      const filePath = `${folder}/${fileName}`;
+      if (useSupabase) {
+        // Original Supabase upload
+        const timestamp = Date.now();
+        const fileName = `${timestamp}-${file.name}`;
+        const filePath = `${folder}/${fileName}`;
 
-      // Upload file to Supabase
-      const { error: uploadError } = await supabase.storage
-        .from('uploadnetlify')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
+        // Upload file to Supabase
+        const { error: uploadError } = await supabase.storage
+          .from('uploadnetlify')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('uploadnetlify')
+          .getPublicUrl(filePath);
+
+        if (!urlData) throw new Error('Failed to get public URL');
+
+        setUploadProgress(100);
+        onChange?.(urlData.publicUrl);
+      } else {
+        // Local upload to enterprisefiles
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Simulate progress for local upload
+        setUploadProgress(30);
+
+        const response = await fetch('/.netlify/functions/upload-file', {
+          method: 'POST',
+          body: formData,
         });
 
-      if (uploadError) throw uploadError;
+        setUploadProgress(70);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('uploadnetlify')
-        .getPublicUrl(filePath);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erreur lors de l\'upload');
+        }
 
-      if (!urlData) throw new Error('Failed to get public URL');
+        const result = await response.json();
+        setUploadProgress(100);
 
-      setUploadProgress(100);
-      onChange?.(urlData.publicUrl);
+        // Return relative path from public directory
+        // This will be something like /enterprisefiles/filename.pdf
+        onChange?.(result.path);
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'upload');
       console.error('Upload error:', err);
     } finally {
       setUploading(false);
-      setUploadProgress(0);
+      setTimeout(() => setUploadProgress(0), 500);
     }
   };
 
   const handleRemove = () => {
     onChange?.(null);
+  };
+
+  const isLocalFile = (url: string | null) => {
+    if (!url) return false;
+    // Check if it's a relative path (starts with /) and not an HTTP/HTTPS URL
+    return url.startsWith('/') && !url.startsWith('http://') && !url.startsWith('https://');
+  };
+
+  const getFileUrl = (url: string | null) => {
+    if (!url) return '';
+    // If it's a local file (relative path), return as is
+    if (isLocalFile(url)) {
+      return url;
+    }
+    // If it's an HTTP/HTTPS URL (Supabase or other), return as is
+    return url;
   };
 
   return (
@@ -86,10 +131,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             disabled={uploading}
             accept={accept}
             className="hidden"
-            id="file-upload"
+            id={`file-upload-${label.replace(/\s+/g, '-')}`}
           />
           <label
-            htmlFor="file-upload"
+            htmlFor={`file-upload-${label.replace(/\s+/g, '-')}`}
             className={`flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer transition-colors hover:border-blue-500 hover:bg-blue-50 ${
               uploading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
@@ -111,14 +156,20 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         <div className="flex items-center justify-between px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
           <div className="flex items-center space-x-2 flex-1 min-w-0">
             <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <a
-              href={value}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-800 truncate"
-            >
-              Fichier téléchargé
-            </a>
+            {isLocalFile(value) ? (
+              <span className="text-sm text-blue-600 truncate">
+                Fichier téléchargé ({value.split('/').pop()})
+              </span>
+            ) : (
+              <a
+                href={getFileUrl(value)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:text-blue-800 truncate"
+              >
+                Fichier téléchargé
+              </a>
+            )}
           </div>
           <button
             type="button"
@@ -144,12 +195,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             disabled
             className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-600 text-xs"
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Cliquez sur le lien vert ci-dessus pour télécharger à nouveau
-          </p>
         </div>
       )}
     </div>
   );
 };
-

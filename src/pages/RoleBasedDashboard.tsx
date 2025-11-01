@@ -7,6 +7,7 @@ import { DirecteurTechniqueDashboard } from './dashboard/DirecteurTechniqueDashb
 import { DirecteurAdministratifDashboard } from './dashboard/DirecteurAdministratifDashboard';
 import { EmployeeDashboard } from './dashboard/EmployeeDashboard';
 import { SecretaryDashboard } from './dashboard/SecretaryDashboard';
+import { AccountantDashboard } from './dashboard/AccountantDashboard';
 
 export function RoleBasedDashboard() {
   const { role } = useAuth();
@@ -26,6 +27,8 @@ export function RoleBasedDashboard() {
       return <EmployeeDashboard />;
     case 'SECRETARY':
       return <SecretaryDashboard />;
+    case 'ACCOUNTANT':
+      return <AccountantDashboard />;
     default:
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">

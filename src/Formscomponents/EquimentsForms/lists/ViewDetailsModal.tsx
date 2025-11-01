@@ -56,12 +56,40 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({ isOpen, onClose, ti
 
   const getTypeText = (type: string) => {
     switch (type) {
-      case 'TOTAL_STATION': return 'Station Totale';
-      case 'GPS': return 'GPS';
-      case 'LEVEL': return 'Niveau';
-      case 'TABLET': return 'Tablette';
-      case 'OTHERS': return 'Autres';
+      case 'NIVEAUX_LASER': return 'Niveaux Laser';
+      case 'PELETEUSES': return 'Pelleuses';
+      case 'BETONNIERES': return 'Bétonnières';
+      case 'SCIES_A_BETON': return 'Scies à Béton';
+      case 'ECHAFAUDAGES': return 'Échafaudages';
+      case 'COMPRESSEURS_AIR': return 'Compresseurs d\'Air';
+      case 'ENGIN_DE_COMPACTAGE': return 'Engin de Compactage';
+      case 'CAMIONS_DE_TRANSPORT': return 'Camions de Transport';
+      case 'MESUREURS_DE_DISTANCE_LASER': return 'Mesureurs de Distance Laser';
+      case 'GENERATEURS': return 'Générateurs';
+      case 'ORDINATEURS_PORTABLES': return 'Ordinateurs Portables';
+      case 'TABLETTES': return 'Tablettes';
+      case 'LOGICIELS_DE_GESTION_DE_PROJET': return 'Logiciels de Gestion de Projet';
+      case 'DRONES': return 'Drones';
+      case 'IMPRIMANTES_3D': return 'Imprimantes 3D';
+      case 'OTHER_Equipement': return 'Autre Équipement';
       default: return type;
+    }
+  };
+
+  const getBrandText = (brand: string) => {
+    switch (brand) {
+      case 'LEICA': return 'Leica';
+      case 'TRIMBLE': return 'Trimble';
+      case 'TOPCON': return 'Topcon';
+      case 'SOKKIA': return 'Sokkia';
+      case 'NIKON': return 'Nikon';
+      case 'PENTAX': return 'Pentax';
+      case 'SPECTRA': return 'Spectra';
+      case 'GEO_FENNEL': return 'Geo Fennel';
+      case 'SOUTH': return 'South';
+      case 'STONEX': return 'Stonex';
+      case 'OTHER_BRAND': return 'Autre Marque';
+      default: return brand;
     }
   };
 
@@ -76,8 +104,8 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({ isOpen, onClose, ti
 
   const formatCurrency = (amount: number, devise: string = 'XAF') => {
     return new Intl.NumberFormat('fr-FR', {
-      style: 'devise',
-      devise: devise,
+      style: 'currency',
+      currency: devise,
     }).format(amount);
   };
 
@@ -120,6 +148,8 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({ isOpen, onClose, ti
                       displayValue = getCategoryText(value);
                     } else if (field.key === 'type') {
                       displayValue = getTypeText(value);
+                    } else if (field.key === 'brand') {
+                      displayValue = getBrandText(value);
                     } else if (field.key === 'ownership') {
                       displayValue = getOwnershipText(value);
                     } else if (field.key.includes('Amount') && typeof value === 'number') {

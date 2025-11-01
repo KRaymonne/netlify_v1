@@ -121,3 +121,49 @@ enum EquipmentBrand {
   STONEX
   OTHER_BRAND
 }
+
+
+pour le dashboard de employer EMPLOYEE secretaire SECRETARY et comptable ACCOUNTANT
+
+sur leur dashboard il faut leur propre sidebar ou il auront acess a certain page de l'application sui sont 
+
+Secretary:
+
+Factures(Invoice )
+Equipement
+contact
+Offre
+Affaires
+Alert
+parcAuto (Vehicles)
+Personelle 
+
+
+Accountant:
+
+Register 
+Bank
+Facture(Invoice )
+Parc Auto(Vehicles)
+Alert 
+Impots et taxes 
+Personelle 
+contact
+Equipement
+Offre
+Affaire
+
+
+Employee:
+
+Factures 
+Equipement 
+contact
+Offre 
+Affaires 
+Alertes 
+Parc Auto 
+
+
+ 
+

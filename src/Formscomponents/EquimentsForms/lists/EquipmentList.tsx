@@ -115,12 +115,40 @@ const EquipmentList: React.FC<EquipmentListProps> = ({
 
   const getTypeText = (type: string) => {
     switch (type) {
-      case 'TOTAL_STATION': return 'Station Totale';
-      case 'GPS': return 'GPS';
-      case 'LEVEL': return 'Niveau';
-      case 'TABLET': return 'Tablette';
-      case 'OTHERS': return 'Autres';
+      case 'NIVEAUX_LASER': return 'Niveaux Laser';
+      case 'PELETEUSES': return 'Pelleuses';
+      case 'BETONNIERES': return 'Bétonnières';
+      case 'SCIES_A_BETON': return 'Scies à Béton';
+      case 'ECHAFAUDAGES': return 'Échafaudages';
+      case 'COMPRESSEURS_AIR': return 'Compresseurs d\'Air';
+      case 'ENGIN_DE_COMPACTAGE': return 'Engin de Compactage';
+      case 'CAMIONS_DE_TRANSPORT': return 'Camions de Transport';
+      case 'MESUREURS_DE_DISTANCE_LASER': return 'Mesureurs de Distance Laser';
+      case 'GENERATEURS': return 'Générateurs';
+      case 'ORDINATEURS_PORTABLES': return 'Ordinateurs Portables';
+      case 'TABLETTES': return 'Tablettes';
+      case 'LOGICIELS_DE_GESTION_DE_PROJET': return 'Logiciels de Gestion de Projet';
+      case 'DRONES': return 'Drones';
+      case 'IMPRIMANTES_3D': return 'Imprimantes 3D';
+      case 'OTHER_Equipement': return 'Autre Équipement';
       default: return type;
+    }
+  };
+
+  const getBrandText = (brand: string) => {
+    switch (brand) {
+      case 'LEICA': return 'Leica';
+      case 'TRIMBLE': return 'Trimble';
+      case 'TOPCON': return 'Topcon';
+      case 'SOKKIA': return 'Sokkia';
+      case 'NIKON': return 'Nikon';
+      case 'PENTAX': return 'Pentax';
+      case 'SPECTRA': return 'Spectra';
+      case 'GEO_FENNEL': return 'Geo Fennel';
+      case 'SOUTH': return 'South';
+      case 'STONEX': return 'Stonex';
+      case 'OTHER_BRAND': return 'Autre Marque';
+      default: return brand;
     }
   };
 
@@ -287,11 +315,22 @@ const EquipmentList: React.FC<EquipmentListProps> = ({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tous</option>
-              <option value="TOTAL_STATION">Station Totale</option>
-              <option value="GPS">GPS</option>
-              <option value="LEVEL">Niveau</option>
-              <option value="TABLET">Tablette</option>
-              <option value="OTHERS">Autres</option>
+              <option value="NIVEAUX_LASER">Niveaux Laser</option>
+              <option value="PELETEUSES">Pelleuses</option>
+              <option value="BETONNIERES">Bétonnières</option>
+              <option value="SCIES_A_BETON">Scies à Béton</option>
+              <option value="ECHAFAUDAGES">Échafaudages</option>
+              <option value="COMPRESSEURS_AIR">Compresseurs d'Air</option>
+              <option value="ENGIN_DE_COMPACTAGE">Engin de Compactage</option>
+              <option value="CAMIONS_DE_TRANSPORT">Camions de Transport</option>
+              <option value="MESUREURS_DE_DISTANCE_LASER">Mesureurs de Distance Laser</option>
+              <option value="GENERATEURS">Générateurs</option>
+              <option value="ORDINATEURS_PORTABLES">Ordinateurs Portables</option>
+              <option value="TABLETTES">Tablettes</option>
+              <option value="LOGICIELS_DE_GESTION_DE_PROJET">Logiciels de Gestion de Projet</option>
+              <option value="DRONES">Drones</option>
+              <option value="IMPRIMANTES_3D">Imprimantes 3D</option>
+              <option value="OTHER_Equipement">Autre Équipement</option>
             </select>
           </div>
 
@@ -307,9 +346,15 @@ const EquipmentList: React.FC<EquipmentListProps> = ({
               <option value="">Tous</option>
               <option value="LEICA">Leica</option>
               <option value="TRIMBLE">Trimble</option>
+              <option value="TOPCON">Topcon</option>
               <option value="SOKKIA">Sokkia</option>
-              <option value="TOPCOM">Topcom</option>
-              <option value="OTHERS">Autres</option>
+              <option value="NIKON">Nikon</option>
+              <option value="PENTAX">Pentax</option>
+              <option value="SPECTRA">Spectra</option>
+              <option value="GEO_FENNEL">Geo Fennel</option>
+              <option value="SOUTH">South</option>
+              <option value="STONEX">Stonex</option>
+              <option value="OTHER_BRAND">Autre Marque</option>
             </select>
           </div>
 
@@ -504,7 +549,7 @@ const EquipmentList: React.FC<EquipmentListProps> = ({
           { key: 'name', label: 'Nom' },
           { key: 'category', label: 'Catégorie', render: (val: string) => val ? getCategoryText(val) : '-' },
           { key: 'type', label: 'Type', render: (val: string) => val ? getTypeText(val) : '-' },
-          { key: 'brand', label: 'Marque' },
+          { key: 'brand', label: 'Marque', render: (val: string) => val ? getBrandText(val) : '-' },
           { key: 'model', label: 'Modèle' },
           { key: 'serialNumber', label: 'Numéro de série' },
           { key: 'referenceCode', label: 'Code de référence' },

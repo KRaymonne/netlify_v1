@@ -331,11 +331,7 @@ const ContractList: React.FC<ContractListProps> = ({ contracts, onEdit, onDelete
             { key: 'grossSalary', label: 'Salaire brut', render: (val: number) => formatCurrency(val, viewModal.contract!.currency) },
             { key: 'netSalary', label: 'Salaire net', render: (val: number) => formatCurrency(val, viewModal.contract!.currency) },
             { key: 'currency', label: 'Devise' },
-            { key: 'contractFile', label: 'Fichier du contrat', render: (val: string) => val ? (
-              <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                Voir le fichier
-              </a>
-            ) : '-' },
+            { key: 'contractFile', label: 'Fichier du contrat' },
             { key: 'startDate', label: 'Date début', render: formatDate },
             { key: 'endDate', label: 'Date fin', render: formatDate },
             { key: 'createdAt', label: 'Créé le', render: formatDate },
