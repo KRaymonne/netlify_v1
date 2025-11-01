@@ -9,7 +9,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { effectiveCountryCode, role } = useAuth();
-  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'DIRECTEUR_TECHNIQUE' || role === 'DIRECTEUR_ADMINISTRATIF';
   if (isAdmin) {
     return (
       <div className="flex h-screen bg-gray-50">

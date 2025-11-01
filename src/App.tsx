@@ -56,9 +56,9 @@ function App() {
                 </ProtectedRoute>
               } />
 
-              {/* Protected routes - Only accessible by SUPER_ADMIN and ADMIN */}
+              {/* Protected routes - Only accessible by SUPER_ADMIN, ADMIN, DIRECTEUR_TECHNIQUE and DIRECTEUR_ADMINISTRATIF */}
               <Route path="/home" element={
-                <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DIRECTEUR_TECHNIQUE', 'DIRECTEUR_ADMINISTRATIF']}>
                   <Layout />
                 </ProtectedRoute>
               }>

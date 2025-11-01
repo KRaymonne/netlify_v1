@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ROLE_OPTIONS = ['SUPER_ADMIN', 'ADMIN', 'DIRECTOR', 'EMPLOYEE', 'SECRETARY'];
+const ROLE_OPTIONS = ['SUPER_ADMIN', 'ADMIN', 'DIRECTOR', 'DIRECTEUR_TECHNIQUE', 'DIRECTEUR_ADMINISTRATIF', 'EMPLOYEE', 'SECRETARY'];
 const WORKCOUNTRY_OPTIONS = ['IVORY_COAST','GHANA','BENIN','CAMEROON','TOGO','ROMANIE','ITALIE'];
 
 const Signup: React.FC = () => {
